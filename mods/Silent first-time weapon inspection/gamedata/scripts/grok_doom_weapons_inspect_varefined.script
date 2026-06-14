@@ -1,0 +1,7 @@
+if not grok_doom_weapons_inspect then
+	return
+end
+
+function grok_doom_weapons_inspect.play_anim_voice_over()
+	-- Muted by Personal tweaks and fixes - elseform.
+end
