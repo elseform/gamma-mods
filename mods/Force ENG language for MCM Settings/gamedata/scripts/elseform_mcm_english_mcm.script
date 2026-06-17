@@ -3,6 +3,28 @@ local english_strings = nil
 local base_translate = nil
 local base_has_translation = nil
 
+local mcm_methods = {
+    "__init",
+    "InitControls",
+    "Update",
+    "Reset_opt",
+    "Open_to",
+    "Register_Cap",
+    "Register_Slide",
+    "Register_Title",
+    "Register_Desc",
+    "Register_Button",
+    "Register_List",
+    "Register_Preset_New",
+    "Register_Radio",
+    "Register_Preset",
+    "Register_Tree",
+    "UpdatePending",
+    "OnButton_Cancel",
+    "On_Cancel",
+    "OnSearch",
+}
+
 local function load_english_strings()
     if english_strings then
         return english_strings
@@ -74,6 +96,18 @@ local function wrap_mcm_method(fn)
     end
 end
 
+local function patch_method(target, name)
+    local ok, fn = pcall(function()
+        return target[name]
+    end)
+
+    if ok and type(fn) == "function" then
+        pcall(function()
+            target[name] = wrap_mcm_method(fn)
+        end)
+    end
+end
+
 local function patch_mcm()
     if patched or not (ui_mcm and ui_mcm.UI_MCM and game and game.translate_string) then
         return
@@ -82,9 +116,15 @@ local function patch_mcm()
     base_translate = game.translate_string
     base_has_translation = has_translation
 
-    for name, fn in pairs(ui_mcm.UI_MCM) do
-        if type(fn) == "function" then
-            ui_mcm.UI_MCM[name] = wrap_mcm_method(fn)
+    if type(ui_mcm.UI_MCM) == "table" then
+        for name, fn in pairs(ui_mcm.UI_MCM) do
+            if type(fn) == "function" then
+                ui_mcm.UI_MCM[name] = wrap_mcm_method(fn)
+            end
+        end
+    else
+        for _, name in ipairs(mcm_methods) do
+            patch_method(ui_mcm.UI_MCM, name)
         end
     end
 

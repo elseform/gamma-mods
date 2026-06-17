@@ -30,14 +30,6 @@
 - Fixes missing `ui_mm_faction_na` references.
 - Adds compatibility aliases for missing bullet impact, dropper water, and wind sounds.
 
-## Script Fixes
-
-- [Download](https://github.com/elseform/gamma-mods/releases/latest/download/Script.Fixes.-.elseform.7z)
-
-- Profile-specific script and config overrides for known load errors or incompatible hooks.
-- Includes no-op overrides for disabled/incomplete integrations.
-- Includes defensive fixes for selected scripts that crash on missing or invalid data.
-
 ## Force ENG Language for MCM Settings
 
 - [Download](https://github.com/elseform/gamma-mods/releases/latest/download/Force.ENG.language.for.MCM.Settings.-.elseform.7z)
