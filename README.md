@@ -4,9 +4,10 @@
 
 - [Download](https://github.com/elseform/gamma-mods/releases/latest/download/D3DMetal.DXMT.Reflex.Reticle.Fix.-.elseform.7z)
 
-- Fixes missing red-dot and holographic sight reticles under D3DMetal or DXMT.
-- Corrects tangent/binormal/normal TEXCOORD semantics in affected reflex sight shaders.
-- Install late in the visual/shader section and delete shaders_cache from appdata.
+- **Red-dot & holographic sights** — dots/reticles that disappear now show up again, and the sight glass renders cleanly.
+- **Night-vision scopes** — the image is properly lit up and not overblown / broken looking.
+- **Thermal scopes** (e.g. the G36 Spec Ops) — cold areas no longer turn into black/garbage noise; you get a clean thermal picture.
+- **Regular magnified scopes** — no more artifacts around the reticle/lens edge.
 
 ## Silent first-time weapon inspection
 
