@@ -1,0 +1,58 @@
+#include "common.h"
+
+uniform float4x4 m_script_params; 
+uniform float4 m_hud_params;	// zoom_rotate_factor, secondVP_zoom_factor, NULL, NULL
+uniform float4 m_blender_mode;	
+Texture2D s_vp2;
+
+struct 	v2p
+{
+ 	float2 	tc0: 		TEXCOORD0;	// base
+ 	float3 	tc1: 		TEXCOORD1;	// environment
+  	float4	c0:			COLOR0;		// sun.(fog*fog)
+};
+
+
+// Активен-ли двойной рендер --#SM+#--
+inline bool isSecondVPActive()
+{
+	return (m_blender_mode.z == 1.0);
+}
+
+float resize(float input, float factor, float offset)
+{
+	return (input - 0.5f + offset) / factor + 0.5f - offset;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+float4 main( v2p I ) : SV_Target
+{
+	//Constants
+	float BAS_NV_BRIGHTNESS = 6.4;
+	float3 BAS_NV_COLOR = float3(0.2, 1.0, 0.4);
+	float BAS_NV_NOISE = 0.085;
+	float BAS_NV_FLICK = 0.004;
+	
+	//Shading
+	float4 t_base = s_base.Sample(smp_base, I.tc0);
+	I.tc0.x = resize(I.tc0.x, screen_res.x / screen_res.y, 0);
+
+	float4 t_vp2 = s_vp2.Sample(smp_base, I.tc0);
+
+    float noise = frac(sin(dot(I.tc0, float2(12.0, 78.0) + timers.x)) * 43758.0); 
+    float lum = dot(t_vp2.xyz, LUMINANCE_VECTOR * BAS_NV_BRIGHTNESS);
+
+	if (!isSecondVPActive()) 
+	{
+		t_vp2.xyz /= 100;
+	}	
+	else
+	{
+	    t_vp2.xyz = BAS_NV_COLOR * lum; //BW + color
+		t_vp2.xyz += noise * BAS_NV_NOISE; //Noise
+		t_vp2.xyz += BAS_NV_FLICK * sin(timers.x * 73.0); //Flickering, fps hit
+	}
+	
+	float3 final = lerp(t_vp2, t_base, t_base.a);
+	return float4(final.r, final.g, final.b, m_hud_params.x);
+}
