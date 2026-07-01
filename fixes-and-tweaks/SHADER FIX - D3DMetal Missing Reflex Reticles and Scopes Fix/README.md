@@ -1,4 +1,4 @@
-# D3DMetal / DXMT Scopes & Reflex Reticles Fix
+# SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
 A single compatibility mod that fixes broken scope, sight, and night/thermal-vision rendering when STALKER GAMMA runs through **D3DMetal / DXMT** (macOS / Apple Silicon via GPTK and similar).
 

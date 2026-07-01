@@ -1,46 +1,76 @@
-# Fixes / Tweaks / Mods
+# GAMMA Fixes and Tweaks
 
-## Fixes
+Small STALKER Anomaly/GAMMA override mods. Each first-level directory under `fixes-and-tweaks/` is installable independently in Mod Organizer 2; the install root should contain that entry's `README.md` when present and `gamedata/` directly.
 
-### D3DMetal DXMT Scopes & Reflex Reticles Fix
+Downloads: [release page](<https://github.com/elseform/gamma-mods/releases>).
 
-- [Download](https://github.com/elseform/gamma-mods/releases)
+## Repository layout
 
-- **Red-dot & holographic sights** — dots/reticles that disappear now show up again, and the sight glass renders cleanly.
-- **Night-vision scopes** — the image is properly lit up and not overblown / broken looking.
-- **Thermal scopes** (e.g. the G36 Spec Ops) — cold areas no longer turn into black/garbage noise; you get a clean thermal picture.
-- **Regular magnified scopes** — no more artifacts around the reticle/lens edge.
+- `fixes-and-tweaks/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files.
+- `fixes-and-tweaks/<Entry Name>/gamedata/...`: exact in-game override paths.
 
-### SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself
+### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
-Solves the issue of FOV changing by itself randomly.
+Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
 
-Source: `Kute's Free Zoom Rewrite`
-`gamedata/scripts/Free_ZoomV2_mcm.script`
+- Restores red-dot and holographic sight reticles that can disappear under D3DMetal.
+- Fixes scope lens-edge artifacts caused by NaN-producing sphere projection math.
+- Fixes night-vision scope tint initialization for strict HLSL compilers.
+- Fixes thermal scope garbage or black output caused by uninitialized cold-pixel color data.
+- Load after 3DSS, Boomsticks & Sharpsticks, Parallax Reflex Sights, and any other optic shader override.
+- Clear `appdata/shaders_cache/` after installing.
 
-- Reads FOV, HUD FOV, and mouse sensitivity from persisted option values instead of the current live console values. This prevents temporary ADS/free-zoom state from being learned as the new baseline and later restored as an apparently random FOV change.
+Path: `fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix`
+
+### SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue
+
+Script override for `267- Dynamic Dialog UI - Demonized`.
+
+- Keeps dialogue zoom and `Camera focus on NPC` behavior enabled.
+- Captures a stable NPC focus point when dialogue opens instead of sampling the animated `bip01_head` bone every frame.
+- Still follows real NPC repositioning by applying the captured head-height offset to the NPC root position.
+- Load after `267- Dynamic Dialog UI - Demonized`.
+
+Path: `fixes-and-tweaks/SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue`
 
 ### SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly
 
-Fixes a fatal crash when autolooter's option to disassemble not favorited ammo is enabled.
+Script override for `G.A.M.M.A. Arti Recipes Overhaul`.
 
-Source: `G.A.M.M.A. Arti Recipes Overhaul`
-`gamedata/scripts/ammo_maker.script`
+- Prevents a fatal crash when the autolooter tries to disassemble non-favorited ammo with missing or empty parts data.
+- Guards empty ammo lists, missing parts sections, missing parts lists, and empty parsed parts lists before consuming ammo or degrading tools.
+- Load after `G.A.M.M.A. Arti Recipes Overhaul`.
 
-- Guards empty ammo lists, missing parts sections, and missing/empty parts lists before consuming ammo or degrading tools.
+Path: `fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly`
+
+### SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself
+
+Script override for `Kute's Free Zoom Rewrite`.
+
+- Prevents temporary ADS/free-zoom FOV, HUD FOV, and mouse sensitivity values from being learned as the new baseline.
+- Reads persisted MCM option values first, falling back to live console values only when saved options are unavailable.
+- Load after `Kute's Free Zoom Rewrite`.
+
+Path: `fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself`
 
 ## Tweaks
 
-### Silent first-time weapon inspection
+### CONFIG TWEAK - No Grain Rads Effect
 
-- [Download](https://github.com/elseform/gamma-mods/releases/tag/v2026.06.14)
+Config override that disables the radiation grain postprocess without changing radiation gameplay.
 
-- Prevents actor voice lines from playing during weapon inspection, animations still play.
-- Expects VArefined to be installed and enabled; remove the VArefined script from this mod if it is not.
+- Comments out `postprocess = postprocess_rad` on the base radioactive zone.
+- Keeps radiation zone strengths, attenuation, hit type, and child zone definitions unchanged.
+- Load after mods that edit `gamedata/configs/zones/zone_field_radioactive.ltx`.
 
-### No Grain Rads Effect
+Path: `fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect`
 
-- [Download](https://github.com/elseform/gamma-mods/releases/tag/v2026.06.14)
+### SCRIPT TWEAK - Silent First-pickup weapon inspection
 
-- Disables the grainy radiation postprocess effect.
-- Should load after mods that edit `gamedata/configs/zones/zone_field_radioactive.ltx`.
+Script override for first-pickup weapon inspection.
+
+- Prevents actor voice lines from playing during weapon inspection.
+- Keeps the inspection animations and first-pickup tracking behavior.
+- Includes a VArefined companion override; remove `grok_doom_weapons_inspect_varefined.script` if VArefined is not installed.
+
+Path: `fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection`
