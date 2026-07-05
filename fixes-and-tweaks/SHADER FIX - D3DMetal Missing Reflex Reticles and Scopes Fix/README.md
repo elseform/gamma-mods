@@ -16,7 +16,7 @@ GAMMA's optic shaders were written for Windows, where the DirectX shader compile
 ### Install
 
 1. Install as a normal MO2 mod (or drop its `gamedata` folder into the game directory).
-2. In your load order, put it **after** 3DSS (410), Boomsticks & Sharpsticks (76), and any reflex-sight shader mod — it needs to win those conflicts.
+2. In your load order, put it **after** 3DSS (410), ARC 3DSS (if installed), Boomsticks & Sharpsticks (76), and any reflex-sight shader mod — it needs to win those conflicts.
 3. **Delete the `appdata/shaders_cache/` folder** so the game rebuilds the shaders. This step is required, not optional.
 
 ---
@@ -47,6 +47,8 @@ All fixes target the same theme: HLSL that legacy FXC (Windows/DXVK) accepts but
 
 At lens-edge pixels `dot(xy,xy)` exceeds `radius²`, so the argument goes negative and `sqrt` returns NaN. DXVK clamps/tolerates this; DXMT propagates NaN into garbage shading at the lens rim. The `max(0.0, …)` guard clamps it. The reflex-sight lens (`models_reflex_lens.ps`) carries the identical math and is fixed alongside the scope shaders.
 
+`models_scope_reticle.ps` and `models_scope_reticle_precise.ps` are based on **ARC 3DSS v1.6.7**'s versions of these files (which add `RT_DFP_ALT`, brightness-adaptive reticle via `current_lum_2`, and the blue-channel LED illumination mask), with the sqrt clamp re-applied on top — the only delta vs. ARC's copies is line 284. If ARC 3DSS updates these shaders again, rebase and re-apply the clamp.
+
 ### 3. Reflex reticle tangent-frame semantics
 
 `models_reflex_reticle.ps`, `models_reflex_reticle_3db.ps`, `models_reflex_reticle_simple.ps`, `models_reflex_reticle_simple_3db.ps`, `models_lfo_light_dot_weapons.ps`. Fixes pixel-shader TEXCOORD input semantics (P/T/B/N = TEXCOORD1/2/3/4) so they match the vertex shader, restoring red-dot/holo reticles that vanish under D3DMetal.
@@ -71,3 +73,16 @@ Same malformed comma-operator init `(0,0,0[,0])` exists in these shaders. Curren
 - `gamedata/shaders/r3/water.ps` (line ~55)
 
 (`thermal_utils.h` was previously here — now fixed, see item 4 above.)
+
+---
+
+## Changelog
+
+### 2026-07-05
+
+- Rebased `models_scope_reticle.ps` and `models_scope_reticle_precise.ps` onto **ARC 3DSS v1.6.7**. The previous copies were built from an older ARC 3DSS build and, when loaded after ARC, silently reverted its newer features (`RT_DFP_ALT` reticle type, brightness-adaptive reticle, LED illumination mask). Only delta vs. ARC 1.6.7 is the sqrt NaN clamp (line 284, fix #2). ARC 1.6.7's own copies still ship the unclamped sqrt, so this mod must still load after ARC.
+- Delete `appdata/shaders_cache/` after updating.
+
+### Initial release
+
+- Fixes #1–#4 as described above.

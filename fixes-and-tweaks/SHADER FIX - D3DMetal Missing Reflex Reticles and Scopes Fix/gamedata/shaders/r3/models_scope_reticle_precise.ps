@@ -5,7 +5,7 @@
 	Authors    : LVutner, party_50
 	Date       : 01.03.2024
 	Last Edit  : 14.04.2025
-	--ARC 3DSS VERSION--
+	--ARC 3DSS v1.6.7 base + D3DMetal/DXMT fix (sqrt NaN clamp)--
 	=====================================================================
 */
 
@@ -32,6 +32,7 @@
 #define RT_ADDITIVE 7
 #define RT_FLAT_SCREEN 8
 #define RT_DFP 9
+#define RT_DFP_ALT 10
 
 #define IT_NONE 0
 #define IT_NV 1
@@ -251,6 +252,13 @@ float current_lum()
 	return clamp(1 - (lum - lum_min) / (lum_max - lum_min), 0, 1);
 }
 
+float current_lum_2(float2 tc)
+{
+    float3 c = s_blur_2.Sample(smp_base, float2(0.5, 0.5)).rgb;
+    return dot(c, float3(0.299, 0.587, 0.114));
+}
+
+
 float4 rgba_blend(float4 b, float4 a)
 {
 	float na = a.a + b.a * (1 - a.a);
@@ -422,7 +430,9 @@ float4 main(vf I) : SV_Target
 	
 	// Sight reticle
 	float2 reticle_lens_tc = project(I.tc0, V_tangent.xy, RETICLE_PROJECT, RETICLE_SIZE);
-float2 reticle_tc = project(I.tc0, V_tangent.xy, RETICLE_PROJECT, RETICLE_SIZE * (FFP || RETICLE_TYPE == RT_GIPERON || RETICLE_TYPE == RT_DFP ? current_zoom : 1));
+float2 reticle_tc = project(I.tc0, V_tangent.xy, RETICLE_PROJECT, RETICLE_SIZE * (FFP || RETICLE_TYPE == RT_GIPERON ? current_zoom : 1));
+
+	float lum_2 = current_lum_2(reticle_tc);
 
 	if (RETICLE_TYPE != RT_FLAT_SCREEN)
 	{
@@ -435,7 +445,7 @@ float2 reticle_tc = project(I.tc0, V_tangent.xy, RETICLE_PROJECT, RETICLE_SIZE *
 	{
 		mark_texture = s_base.Sample(smp_base, clamp(reticle_tc, 0, 1));
 	}
-	
+
 if (RETICLE_TYPE == RT_DFP)
 {
     float4 tex_ffp = float4(0,0,0,0);
@@ -448,14 +458,48 @@ if (RETICLE_TYPE == RT_DFP)
         tex_sfp = s_base.Sample(smp_base, clamp(reticle_lens_tc, 0, 1));
 
     float vis = max(tex_ffp.r, tex_sfp.g);
+
+    // Blue channel = illumination mask, works only on the SFP
     float led = tex_sfp.b;
 
+    // When illumination is off (markswitch_color is black), hide the blue channel entirely
+    // We can detect that by color intensity or use markswitch_color.a if it toggles LED state
+    float illum_enabled = saturate(dot(markswitch_color.rgb, 1.0)); // sums RGB, 0 = off, >0 = on
+
+    // Construct layers
     float4 base_lines = float4(0.0, 0.0, 0.0, vis);
-    float4 led_layer  = float4(markswitch_color.rgb, led);
+    float4 led_layer  = float4(markswitch_color.rgb, led * illum_enabled);
 
     mark_texture = rgba_blend(base_lines, led_layer);
 }
 
+if (RETICLE_TYPE == RT_DFP_ALT)
+{
+    float4 tex_ffp = float4(0,0,0,0);
+    float4 tex_sfp = float4(0,0,0,0);
+
+    if (reticle_tc.x >= 0 && reticle_tc.x <= 1 && reticle_tc.y >= 0 && reticle_tc.y <= 1)
+        tex_ffp = s_base.Sample(smp_base, clamp(reticle_tc, 0, 1));
+
+    if (reticle_lens_tc.x >= 0 && reticle_lens_tc.x <= 1 && reticle_lens_tc.y >= 0 && reticle_lens_tc.y <= 1)
+        tex_sfp = s_base.Sample(smp_base, clamp(reticle_lens_tc, 0, 1));
+
+    float vis = max(tex_ffp.r, tex_sfp.g);
+
+    // Blue channel = illumination mask, works only on the FFP
+    float led = tex_ffp.b;
+
+    // When illumination is off (markswitch_color is black), hide the blue channel entirely
+    // We can detect that by color intensity or use markswitch_color.a if it toggles LED state
+    float illum_enabled = saturate(dot(markswitch_color.rgb, 1.0)); // sums RGB, 0 = off, >0 = on
+
+    // Construct layers
+    float4 base_lines = float4(0.0, 0.0, 0.0, vis);
+    float4 led_layer  = float4(markswitch_color.rgb, led * illum_enabled);
+
+    mark_texture = rgba_blend(base_lines, led_layer);
+}
+	
 	float4 giperon_sfp;
 	if (RETICLE_TYPE == RT_GIPERON)
 {
@@ -485,6 +529,7 @@ if (RETICLE_TYPE == RT_DFP)
 		float tritium_lum = 0.2;
 		mark_texture = rgba_blend(rgba_blend(float4(black, mark_texture.r), float4(markswitch_color.rgb * max(tritium_lum, lum * 2), mark_texture.g)), float4(text, mark_texture.b * lum));
 	}
+	
 	
 	if (RETICLE_TYPE == RT_LED || RETICLE_TYPE == RT_GIPERON)
 	{
@@ -542,7 +587,7 @@ if (RETICLE_TYPE == RT_DFP)
 		shadow_texture *= 1 - m_hud_params.x;
 	}
 	
-	// LED-illuminated inside walls
+	// LED-illuminated scope interior
 	float4 inside = s_inside.Sample(smp_base, clamp((reticle_lens_tc - 0.5) * 0.62 + 0.5, 0, 1));
 	inside = float4(markswitch_color.rgb * inside.r, inside.a);
 	if (RETICLE_TYPE == RT_SCREEN || RETICLE_TYPE == RT_FLAT_SCREEN || RETICLE_TYPE == RT_SPECTER || RETICLE_TYPE == RT_ACOG || FFP) {
