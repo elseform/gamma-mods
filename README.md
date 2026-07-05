@@ -1,6 +1,6 @@
 # GAMMA Fixes and Tweaks
 
-Small STALKER Anomaly/GAMMA override mods. Each first-level directory under `fixes-and-tweaks/` is installable independently in Mod Organizer 2; the install root should contain that entry's `README.md` when present and `gamedata/` directly.
+Small STALKER Anomaly/GAMMA override mods. Each first-level directory under `fixes-and-tweaks/` or `script-fixes/` is installable independently in Mod Organizer 2; the install root should contain that entry's `README.md` when present and `gamedata/` directly.
 
 Downloads: [release page](<https://github.com/elseform/gamma-mods/releases>).
 
@@ -8,6 +8,8 @@ Downloads: [release page](<https://github.com/elseform/gamma-mods/releases>).
 
 - `fixes-and-tweaks/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files.
 - `fixes-and-tweaks/<Entry Name>/gamedata/...`: exact in-game override paths.
+- `script-fixes/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files for promoted script fixes.
+- `script-fixes/<Entry Name>/gamedata/...`: exact in-game override paths for promoted script fixes.
 
 ### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
@@ -28,10 +30,10 @@ Script override for `267- Dynamic Dialog UI - Demonized`.
 
 - Keeps dialogue zoom and `Camera focus on NPC` behavior enabled.
 - Captures a stable NPC focus point when dialogue opens instead of sampling the animated `bip01_head` bone every frame.
-- Still follows real NPC repositioning by applying the captured head-height offset to the NPC root position.
+- Applies the captured head-height offset to the NPC root position so the camera still follows real NPC movement.
 - Load after `267- Dynamic Dialog UI - Demonized`.
 
-Path: `fixes-and-tweaks/SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue`
+Path: `script-fixes/SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue`
 
 ### SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly
 

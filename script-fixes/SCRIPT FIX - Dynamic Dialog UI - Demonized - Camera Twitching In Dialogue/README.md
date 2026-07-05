@@ -13,6 +13,7 @@ Fixes dialogue camera twitching while preserving Dynamic Dialog UI's zoom and NP
 - Uses a copied vector so later direction math does not mutate the saved camera target.
 - Applies the captured head-height offset to the NPC root position so the camera still follows real NPC movement.
 - Stops per-frame `bip01_head` animation and look-IK jitter from moving the camera target.
+- Keeps dialogue zoom and `Camera focus on NPC` enabled.
 
 ## Install
 
@@ -24,4 +25,4 @@ Place after `267- Dynamic Dialog UI - Demonized` so this script override wins.
 
 ## Caveats
 
-This fix targets camera target jitter during dialogue. It does not disable dialogue zoom, disable NPC focus, or change Dynamic Dialog UI MCM settings.
+This fix does not disable dialogue zoom or NPC focus. It only changes the focus target source from the live animated head bone to a stable head-height point derived from the NPC root position.
