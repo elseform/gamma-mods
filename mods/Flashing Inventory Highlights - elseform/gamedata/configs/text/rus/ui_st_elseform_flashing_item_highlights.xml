@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_flash_hl">
+		<text>FIH</text>
+	</string>
+	<string id="ui_mcm_flash_hl_title">
+		<text>Мигающая подсветка инвентаря (FIH)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_enabled">
+		<text>Включить мигание</text>
+	</string>
+	<string id="ui_mcm_flash_hl_enabled_desc">
+		<text>Подсветка совместимых предметов (прицелы, глушители, инструменты для улучшений) пульсирует вместо статичного свечения.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_period">
+		<text>Период пульсации (секунды)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_period_desc">
+		<text>Длительность одного полного цикла яркий-тусклый-яркий.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_min_bright">
+		<text>Минимальная яркость (%)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_min_bright_desc">
+		<text>Интенсивность подсветки в тусклой точке пульсации относительно стандартной подсветки.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_max_bright">
+		<text>Максимальная яркость (%)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_max_bright_desc">
+		<text>Интенсивность подсветки в яркой точке пульсации. Стандартная подсветка едва заметна, поэтому значения выше 100% делают её заметнее.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_use_custom_clr">
+		<text>Настроить цвет</text>
+	</string>
+	<string id="ui_mcm_flash_hl_use_custom_clr_desc">
+		<text>Использовать ползунки RGB ниже. Если включено, они переопределяют выбранный цвет.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_preset">
+		<text>Цвет</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_preset_desc">
+		<text>Готовые цвета подсветки, используемые, когда «Настроить цвет» выключено. По умолчанию выбран оранжевый.</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_blue">
+		<text>Голубой</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_white">
+		<text>Белый</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_red">
+		<text>Красный</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_orange">
+		<text>Оранжевый</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_yellow">
+		<text>Жёлтый</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_green">
+		<text>Зелёный</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_cyan">
+		<text>Бирюзовый</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_purple">
+		<text>Фиолетовый</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_r">
+		<text>Красный</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_g">
+		<text>Зелёный</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_b">
+		<text>Синий</text>
+	</string>
+</string_table>

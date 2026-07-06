@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_flash_hl">
+		<text>FIH</text>
+	</string>
+	<string id="ui_mcm_flash_hl_title">
+		<text>Flashing Inventory Highlights</text>
+	</string>
+	<string id="ui_mcm_flash_hl_enabled">
+		<text>Enable flashing</text>
+	</string>
+	<string id="ui_mcm_flash_hl_enabled_desc">
+		<text>Pulse the highlight on related items (compatible attachments, upgrade tools) instead of a static glow.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_period">
+		<text>Pulse period (seconds)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_period_desc">
+		<text>Duration of one full bright-dim-bright cycle.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_min_bright">
+		<text>Minimum brightness (%)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_min_bright_desc">
+		<text>Highlight intensity at the dim point of the pulse, relative to the default highlight.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_max_bright">
+		<text>Maximum brightness (%)</text>
+	</string>
+	<string id="ui_mcm_flash_hl_max_bright_desc">
+		<text>Highlight intensity at the bright point of the pulse.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_use_custom_clr">
+		<text>Customize color</text>
+	</string>
+	<string id="ui_mcm_flash_hl_use_custom_clr_desc">
+		<text>Use the RGB sliders below. When enabled, they override the Color preset selection.</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_preset">
+		<text>Color preset</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_preset_desc">
+		<text>Ready-made highlight colors used when Customize color is off. Orange is selected by default.</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_blue">
+		<text>Blue</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_white">
+		<text>White</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_red">
+		<text>Red</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_orange">
+		<text>Orange</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_yellow">
+		<text>Yellow</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_green">
+		<text>Green</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_cyan">
+		<text>Cyan</text>
+	</string>
+	<string id="ui_mcm_lst_fih_clr_purple">
+		<text>Purple</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_r">
+		<text>Red</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_g">
+		<text>Green</text>
+	</string>
+	<string id="ui_mcm_flash_hl_clr_b">
+		<text>Blue</text>
+	</string>
+</string_table>

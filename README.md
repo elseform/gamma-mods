@@ -4,12 +4,19 @@ Small STALKER Anomaly/GAMMA override mods. Each first-level directory under `fix
 
 Downloads: [release page](<https://github.com/elseform/gamma-mods/releases>).
 
-## Repository layout
+## Mods
 
-- `fixes-and-tweaks/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files.
-- `fixes-and-tweaks/<Entry Name>/gamedata/...`: exact in-game override paths.
-- `script-fixes/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files for promoted script fixes.
-- `script-fixes/<Entry Name>/gamedata/...`: exact in-game override paths for promoted script fixes.
+### Flashing Inventory Highlights (FIH)
+
+Adds pulsating flash for inventory / trading grid instead of a static highlight.
+
+Features customizable options:
+
+- Pulse period;
+- Minimum and maximum brightness;
+- Color presets, and optional custom RGB sliders;
+
+Path: `mods/Flashing Inventory Highlights - elseform`
 
 ### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
@@ -76,3 +83,12 @@ Script override for first-pickup weapon inspection.
 - Includes a VArefined companion override; remove `grok_doom_weapons_inspect_varefined.script` if VArefined is not installed.
 
 Path: `fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection`
+
+## Repository layout
+
+- `fixes-and-tweaks/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files.
+- `fixes-and-tweaks/<Entry Name>/gamedata/...`: exact in-game override paths.
+- `script-fixes/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files for promoted script fixes.
+- `script-fixes/<Entry Name>/gamedata/...`: exact in-game override paths for promoted script fixes.
+- `mods/<Entry Name>/README.md`: install notes and caveats for standalone mods (new functionality rather than fixes or tweaks).
+- `mods/<Entry Name>/gamedata/...`: in-game paths for standalone mods; files are new, not overrides.
