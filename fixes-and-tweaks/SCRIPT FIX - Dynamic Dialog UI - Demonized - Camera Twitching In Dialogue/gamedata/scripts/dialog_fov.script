@@ -7,7 +7,7 @@ end
 -- Truncate to a decimal
 local function trunc(float, decimal)
 	local d = 10 ^ (decimal or 1)
-	return math.floor(float * d) / d 
+	return math.floor(float * d) / d
 end
 
 -- Linear inter/extrapolation
@@ -45,28 +45,32 @@ end
 local function bisect_left(a, x, lo, hi)
 	local lo = lo or 1
 	local hi = hi or #a
-	
+
 	if lo < 0 then
-		printf('bisect, lo must be non-negative')
+		printf("bisect, lo must be non-negative")
 		return
 	end
 
 	while lo < hi do
 		local mid = math.floor((lo + hi) * 0.5)
-		if a[mid] < x then 
-			lo = mid+1
+		if a[mid] < x then
+			lo = mid + 1
 		else
 			hi = mid
 		end
-    end
+	end
 
 	return lo
 end
 
 local function lookup(t, key, tkeys)
-	if is_empty(t) then return 0 end
+	if is_empty(t) then
+		return 0
+	end
 
-	if t[key] then return t[key] end
+	if t[key] then
+		return t[key]
+	end
 
 	if not tkeys then
 		tkeys = array_keys(t, true)
@@ -83,7 +87,7 @@ local function lookup(t, key, tkeys)
 			local lo = tkeys[1]
 			local k = (key - lo) / (hi - lo)
 			return lerp(t[lo], t[hi], k)
-		end  
+		end
 	end
 	if key >= tkeys[tkeys_len] then
 		if key == tkeys[tkeys_len] then
@@ -99,15 +103,17 @@ local function lookup(t, key, tkeys)
 	end
 
 	local where = bisect_left(tkeys, key)
-    local lo = tkeys[where-1] or tkeys[where]
-    local hi = tkeys[where]
-    if lo == hi then return t[lo] end
+	local lo = tkeys[where - 1] or tkeys[where]
+	local hi = tkeys[where]
+	if lo == hi then
+		return t[lo]
+	end
 
-    local delta = (key - lo) / (hi - lo)
-    local res = delta * t[hi] + (1 - delta) * t[lo]
+	local delta = (key - lo) / (hi - lo)
+	local res = delta * t[hi] + (1 - delta) * t[lo]
 
-    --printf(res)
-    return res
+	--printf(res)
+	return res
 end
 
 -- EMA smoothing for changing values, frame independent
@@ -119,7 +125,10 @@ local function ema(key, value, def, steps, delta)
 	local delta = delta or steps
 	local smoothing_alpha = 2.0 / (steps + 1)
 
-	smoothed_values[key] = smoothed_values[key] and smoothed_values[key] + math.min(smoothing_alpha * (delta / steps), 1) * (value - smoothed_values[key]) or def or value
+	smoothed_values[key] = smoothed_values[key]
+			and smoothed_values[key] + math.min(smoothing_alpha * (delta / steps), 1) * (value - smoothed_values[key])
+		or def
+		or value
 
 	--printf("EMA fired, key %s, target %s, current %s, going %s", key, value, smoothed_values[key], (value > smoothed_values[key] and "up" or "down"))
 	return smoothed_values[key]
@@ -157,93 +166,17 @@ local saved_rotate
 local saved_look_pos
 local saved_look_offset
 
--- Close-range twitch filter tuning. Distances are meters, times are seconds
--- unless noted. See HANDOFF.md for the reasoning behind the two-stage filter.
-local base_deadzone        = 0.035 -- raw look target must move this far to be accepted
-local close_deadzone_bonus = 0.060 -- extra deadzone at point-blank range
-local close_distance       = 1.4   -- camera-to-target distance below this counts as close
-local close_range_span     = 0.9   -- fade width of the close-range factor
-local target_tau           = 0.22  -- ease time toward an accepted look target
-local close_tau_bonus      = 0.12  -- extra ease time at close range
-local cam_deadzone         = 0.020 -- eye-point sway below this is ignored for direction math
-local cam_tau              = 0.25  -- ease time for the direction-math eye point
-local output_epsilon_deg   = 0.30  -- direction changes below this are not sent to the engine
-local close_epsilon_deg    = 0.25  -- extra output epsilon at point-blank range
-local relax_duration       = 500   -- ms of relaxed deadzone after an accepted move
-local relax_factor         = 0.3   -- deadzone multiplier while relaxed
-
--- Filter state
-local look_filter = {} -- filtered NPC look target
-local cam_filter = {}  -- filtered eye point used for direction math only
-local saved_smoothed_dir
-local saved_output_dir
-
 -- X-Ray vectors are mutable; direction math must not overwrite the saved camera target.
 local function copy_vector(v)
 	return v and vector():set(v.x, v.y, v.z)
 end
 
-local function clamp_num(v, lo, hi)
-	return math.max(lo, math.min(hi, v))
-end
-
--- Frame-rate independent smoothing factor
-local function smoothing_alpha(delta_ms, tau_s)
-	local dt = math.max(0, delta_ms or 0) * 0.001
-	return 1 - math.exp(-dt / tau_s)
-end
-
-local function vec_distance(a, b)
-	if not a or not b then return math.huge end
-	local dx = a.x - b.x
-	local dy = a.y - b.y
-	local dz = a.z - b.z
-	return math.sqrt(dx * dx + dy * dy + dz * dz)
-end
-
--- Deadzone + eased follow for a world-space point. Rejects high-frequency
--- noise, accepts real repositioning, and eases toward accepted positions so
--- the camera never snaps. Shortly after an accepted move the deadzone is
--- relaxed (hysteresis) so genuine continuous motion tracks smoothly instead
--- of stair-stepping one deadzone step at a time.
-local function update_point_filter(state, raw_pos, delta, deadzone, tau)
-	if not raw_pos then return state.filtered end
-
-	if not state.filtered then
-		state.filtered = copy_vector(raw_pos)
-		state.accepted = copy_vector(raw_pos)
-		state.relax = 0
-		return state.filtered
-	end
-
-	state.relax = math.max(0, (state.relax or 0) - delta)
-	local dz = state.relax > 0 and deadzone * relax_factor or deadzone
-
-	if vec_distance(raw_pos, state.accepted) > dz then
-		state.accepted:set(raw_pos.x, raw_pos.y, raw_pos.z)
-		state.relax = relax_duration
-	end
-
-	local alpha = smoothing_alpha(delta, tau)
-	state.filtered:set(
-		state.filtered.x + (state.accepted.x - state.filtered.x) * alpha,
-		state.filtered.y + (state.accepted.y - state.filtered.y) * alpha,
-		state.filtered.z + (state.accepted.z - state.filtered.z) * alpha
-	)
-
-	return state.filtered
-end
-
-local function reset_point_filter(state)
-	state.filtered = nil
-	state.accepted = nil
-	state.relax = nil
-end
-
 -- Capture the initial head offset once. Live head bones move from idle animation
 -- and engine NPC-look IK, which makes the camera twitch when sampled every frame.
 local function capture_look_pos(npc)
-	if not npc then return end
+	if not npc then
+		return
+	end
 
 	local base_pos = npc:position()
 	local head_pos = utils_obj.safe_bone_pos(npc, "bip01_head")
@@ -254,10 +187,7 @@ local function capture_look_pos(npc)
 		saved_look_offset = vector():set(0, 1.5, 0)
 		saved_look_pos = vector():set(base_pos.x, base_pos.y + saved_look_offset.y, base_pos.z)
 	elseif head_pos then
-		-- No root position available; keep a nominal offset so the target can
-		-- still follow the root if it becomes available later, instead of
-		-- silently degrading to a fixed world point.
-		saved_look_offset = vector():set(0, 1.5, 0)
+		saved_look_offset = nil
 		saved_look_pos = copy_vector(head_pos)
 	end
 
@@ -287,7 +217,11 @@ end
 
 -- Get NPC actor talks to
 function valid_npc(npc)
-	return npc and (special_characters[npc:section()] or IsStalker(npc) and npc:alive() and npc:is_talking() and npc:id() ~= AC_ID)
+	return npc
+		and (
+			special_characters[npc:section()]
+			or IsStalker(npc) and npc:alive() and npc:is_talking() and npc:id() ~= AC_ID
+		)
 end
 
 function GetTalkingNpc()
@@ -311,39 +245,13 @@ function move_camera()
 		return stop_move_camera()
 	end
 
-	-- NPC died mid-dialog: stop chasing a stale target
-	if not saved_npc:alive() then
+	-- Get look position and direction
+	local look_pos = get_stable_look_pos(saved_npc)
+	if not look_pos then
 		return stop_move_camera()
 	end
-
-	local delta = time_delta()
-
-	-- Stage 1: stable raw focus target (NPC root position + captured head offset)
-	local raw_look_pos = get_stable_look_pos(saved_npc)
-	if not raw_look_pos then
-		return stop_move_camera()
-	end
-
-	local cam_pos = device().cam_pos
-
-	-- Close-range factor: small world-space motion becomes large angular
-	-- motion when the camera is near the target, so filtering scales up there.
-	local ref_pos = look_filter.filtered or raw_look_pos
-	local dist = math.max(0.5, cam_pos:distance_to(ref_pos))
-	local close_factor = clamp_num((close_distance - dist) / close_range_span, 0, 1)
-
-	-- Stage 2: accepted and filtered focus target
-	local look_pos = update_point_filter(look_filter, raw_look_pos, delta,
-		base_deadzone + close_deadzone_bonus * close_factor,
-		target_tau + close_tau_bonus * close_factor)
-
-	-- Filter the eye point used for direction math as well: dialog breathing
-	-- sway, and the eye shift caused by actor_look_at_point itself rotating
-	-- the actor, otherwise feed back into the target direction every frame.
-	local dir_cam_pos = update_point_filter(cam_filter, cam_pos, delta, cam_deadzone, cam_tau)
-
 	-- Work on a copy because :sub() mutates its receiver.
-	local look_dir = copy_vector(look_pos):sub(dir_cam_pos):normalize()
+	local look_dir = copy_vector(look_pos):sub(device().cam_pos):normalize()
 
 	-- Turn look direction depending on aspect ratio of display
 	local rotate_deg
@@ -360,40 +268,17 @@ function move_camera()
 	rotate_deg = rotate_deg * settings.turn_modifier
 	local new_look_dir = vector_rotate_y(look_dir, rotate_deg)
 
-	-- Smooth the turning for better effect. Exponential smoothing is
-	-- frame-rate independent; tau is mapped from the legacy MCM smoothing
-	-- steps (legacy time constant ~= steps * (steps + 1) / 2 ms) so the tuned
-	-- feel is preserved, then increased at close range for extra stability.
-	local dir_tau = math.max(0.01, settings.smoothing * (settings.smoothing + 1) * 0.0005)
-	dir_tau = dir_tau * (1 + close_factor)
-	local dir_alpha = smoothing_alpha(delta, dir_tau)
-	if not saved_smoothed_dir then
-		-- Start from the unrotated direction so the camera pans into the offset
-		saved_smoothed_dir = copy_vector(look_dir)
-	end
-	saved_smoothed_dir:set(
-		saved_smoothed_dir.x + (new_look_dir.x - saved_smoothed_dir.x) * dir_alpha,
-		saved_smoothed_dir.y + (new_look_dir.y - saved_smoothed_dir.y) * dir_alpha,
-		saved_smoothed_dir.z + (new_look_dir.z - saved_smoothed_dir.z) * dir_alpha
+	-- Smooth the turning for better effect
+	local steps = settings.smoothing
+	local delta = time_delta()
+	local smoothed_look_dir = vector():set(
+		ema("look_dir_x", new_look_dir.x, look_dir.x, steps, delta),
+		ema("look_dir_y", new_look_dir.y, look_dir.y, steps, delta),
+		ema("look_dir_z", new_look_dir.z, look_dir.z, steps, delta)
 	)
 
-	-- Output gate: never feed the engine sub-perceptual direction changes.
-	-- The engine keeps chasing whatever point it is last given; a point that
-	-- micro-jitters every frame makes it twitch, so steady-state frames send
-	-- nothing and the engine settles on the previous point.
-	local out_dir = copy_vector(saved_smoothed_dir):normalize()
-	if saved_output_dir then
-		local eps = (output_epsilon_deg + close_epsilon_deg * close_factor) * math.pi / 180
-		if saved_output_dir:dotproduct(out_dir) >= math.cos(eps) then
-			return
-		end
-		saved_output_dir:set(out_dir.x, out_dir.y, out_dir.z)
-	else
-		saved_output_dir = copy_vector(out_dir)
-	end
-
 	-- Apply the turning
-	local new_look_pos = vector():mad(device().cam_pos, out_dir, 10)
+	local new_look_pos = vector():mad(device().cam_pos, smoothed_look_dir, 10)
 	db.actor:actor_look_at_point(new_look_pos)
 end
 
@@ -408,10 +293,9 @@ function stop_move_camera()
 			db.actor:actor_stop_look_at_point()
 		end
 	end
-	reset_point_filter(look_filter)
-	reset_point_filter(cam_filter)
-	saved_smoothed_dir = nil
-	saved_output_dir = nil
+	smoothed_values.look_dir_x = nil
+	smoothed_values.look_dir_y = nil
+	smoothed_values.look_dir_z = nil
 	saved_rotate = nil
 	saved_npc = nil
 	saved_dist = nil
@@ -482,7 +366,9 @@ end
 
 function reset_fov()
 	stop_fov()
-	if not saved_fov then return end
+	if not saved_fov then
+		return
+	end
 
 	exec_console_cmd("fov " .. saved_fov)
 	exec_console_cmd("hud_fov " .. saved_hud_fov)
@@ -536,10 +422,10 @@ end
 
 function switch_mod(enable)
 	local funcs = {
-		{"GUI_on_show", GUI_on_show},
-		{"GUI_on_hide", GUI_on_hide},
-		{"actor_on_net_destroy", hard_reset},
-		{"actor_on_before_death", hard_reset},
+		{ "GUI_on_show", GUI_on_show },
+		{ "GUI_on_hide", GUI_on_hide },
+		{ "actor_on_net_destroy", hard_reset },
+		{ "actor_on_before_death", hard_reset },
 	}
 	if enable then
 		for i, v in ipairs(funcs) do
