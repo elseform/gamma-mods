@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_elseform_itts_label">
+		<text>Наиграно:</text>
+	</string>
+	<string id="st_elseform_itts_session_label">
+		<text>Сессия:</text>
+	</string>
+	<string id="st_elseform_itts_h">
+		<text>ч</text>
+	</string>
+	<string id="st_elseform_itts_m">
+		<text>мин</text>
+	</string>
+	<string id="st_elseform_itts_notify_warn">
+		<text>До конца игровой сессии осталось %d мин.</text>
+	</string>
+	<string id="st_elseform_itts_notify_over">
+		<text>Время игровой сессии истекло. Потрогай траву и выйди на солнце, пожалуйста.</text>
+	</string>
+
+	<!-- MCM -->
+	<string id="ui_mcm_menu_itts_stat">
+		<text>%c[255,255,160,40]ITTS</text>
+	</string>
+	<string id="ui_mcm_menu_itts_clock">
+		<text>HUD часы</text>
+	</string>
+	<string id="ui_mcm_menu_itts_notify">
+		<text>Уведомления о сессии</text>
+	</string>
+	<string id="ui_mcm_menu_itts_stats">
+		<text>Наигранное время</text>
+	</string>
+	<string id="ui_mcm_itts_stat_title">
+		<text>It's Time To Stop</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_pause">
+		<text>Сессия: считать паузы</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_pause_desc">
+		<text>Учитывать в таймере сессии время в меню паузы, MCM, консоли и при сворачивании игры (по реальным часам). Общее наигранное время это не учитывает.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_loadings">
+		<text>Сессия: считать загрузки</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_loadings_desc">
+		<text>Учитывать в таймере сессии экраны загрузки, переходы между уровнями, время в главном меню между загрузками и короткие перезапуски игры. Общее наигранное время это не учитывает.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_break_min">
+		<text>Сессия: порог перерыва (минуты)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_break_min_desc">
+		<text>Таймер сессии продолжает идти через загрузки, переходы между уровнями и даже перезапуски игры. Он начинается заново, только если вы отсутствовали дольше этого времени (игра закрыта, вылет или простой в главном меню).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_units">
+		<text>Детализация времени</text>
+	</string>
+	<string id="ui_mcm_itts_stat_units_desc">
+		<text>Насколько подробно отображается время. Применяется сразу.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_units_hm">
+		<text>Часы, минуты</text>
+	</string>
+	<string id="ui_mcm_lst_itts_units_h">
+		<text>Только часы</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_total">
+		<text>Показывать общее время в КПК</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_total_desc">
+		<text>Показывать строку «Наиграно» в нижней панели статистики КПК. Применяется после перезапуска игры.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_session">
+		<text>Показывать время сессии в КПК</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_session_desc">
+		<text>Показывать строку «Сессия» в нижней панели статистики КПК. Применяется после перезапуска игры.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_enabled">
+		<text>Показывать часы реального времени</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_enabled_desc">
+		<text>Отображать реальное локальное время на HUD.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_pos">
+		<text>Положение часов</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_pos_desc">
+		<text>Пресеты у компаса привязаны к активной мини-карте и зеркалят положение штатных часов. Варианты «снизу справа» либо переносят штатные часы игры вниз влево, либо полностью их заменяют. Требуется перезапуск.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_al">
+		<text>Компас: сверху слева</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_ar">
+		<text>Компас: сверху справа</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_bl">
+		<text>Компас: снизу слева</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_br">
+		<text>Компас: снизу справа (игровые часы — слева)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_br_replace">
+		<text>Компас: снизу справа (вместо игровых часов)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_tl">
+		<text>Экран: левый верхний угол</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_tr">
+		<text>Экран: правый верхний угол</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_bl">
+		<text>Экран: левый нижний угол</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_br">
+		<text>Экран: правый нижний угол</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_x">
+		<text>Смещение часов по X</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_x_desc">
+		<text>Точная настройка положения часов по горизонтали.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_y">
+		<text>Смещение часов по Y</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_y_desc">
+		<text>Точная настройка положения часов по вертикали.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_24h">
+		<text>24-часовой формат</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_24h_desc">
+		<text>Выкл. = 12-часовой формат с AM/PM.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_blink">
+		<text>Мигание разделителей</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_blink_desc">
+		<text>Плавно приглушать двоеточия реальных часов раз в секунду. Ненавязчиво: они тускнеют, но не исчезают.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_font">
+		<text>Шрифт часов</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_font_desc">
+		<text>Шрифт часов реального времени на HUD.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica16">
+		<text>Letterica 16 (компактный)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica18">
+		<text>Letterica 18</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica25">
+		<text>Letterica 25 (крупный)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_graffiti19">
+		<text>Graffiti 19</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_graffiti22">
+		<text>Graffiti 22</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_clr">
+		<text>Цвет часов</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_clr_desc">
+		<text>Готовый цвет, чтобы реальные часы было легко отличить от игровых на глаз.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_default">
+		<text>Светло-серый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_white">
+		<text>Белый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_orange">
+		<text>Оранжевый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_yellow">
+		<text>Жёлтый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_green">
+		<text>Зелёный</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_cyan">
+		<text>Голубой</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_red">
+		<text>Красный</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_amber">
+		<text>Янтарный</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_blue">
+		<text>Синий</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_purple">
+		<text>Фиолетовый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_pink">
+		<text>Розовый</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_beige">
+		<text>Бежевый</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_custom">
+		<text>Свой цвет часов</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_custom_desc">
+		<text>Использовать RGB-ползунки ниже вместо готового цвета.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_r">
+		<text>Свой цвет: красный</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_r_desc">
+		<text>Красная составляющая пользовательского цвета часов (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_g">
+		<text>Свой цвет: зелёный</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_g_desc">
+		<text>Зелёная составляющая пользовательского цвета часов (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_b">
+		<text>Свой цвет: синий</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_b_desc">
+		<text>Синяя составляющая пользовательского цвета часов (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_enabled">
+		<text>Уведомления в КПК</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_enabled_desc">
+		<text>Присылать сообщение в КПК от имени It's Time To Stop, когда сессия пересекает пороги ниже: остаток времени на пороге "хорошо" и напоминание остановиться на пороге "плохо". Одно сообщение на пересечение.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_good">
+		<text>Порог "хорошо" (минуты)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_good_desc">
+		<text>При пересечении этой длительности сессии в КПК придёт предупреждение с остатком времени до порога "плохо". Здесь же прогрессивный цвет часов переключается на средний.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_bad">
+		<text>Порог "плохо" (минуты)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_bad_desc">
+		<text>При пересечении этой длительности сессии в КПК придёт сообщение об истёкшей сессии. Здесь же прогрессивный цвет часов переключается на последний.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat">
+		<text>Повторять уведомление об истёкшей сессии</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_desc">
+		<text>После порога "плохо" продолжать присылать сообщение об истёкшей сессии с интервалом ниже.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_min">
+		<text>Интервал повтора (минуты)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_min_desc">
+		<text>Сколько игрового времени проходит между повторными сообщениями об истёкшей сессии.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_sound">
+		<text>Звук уведомления</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_sound_desc">
+		<text>Проигрывать сигнал КПК вместе с уведомлением.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive">
+		<text>Прогрессивный цвет по длительности сессии</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_desc">
+		<text>Автоматически менять цвет часов по мере того, как текущая сессия пересекает пороги уведомлений выше. Отменяет пресет цвета и пользовательский цвет.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_good">
+		<text>Цвет этапа: до порога "хорошо"</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_good_desc">
+		<text>Цвет часов, пока сессия короче порога "хорошо".</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_mid">
+		<text>Цвет этапа: между порогами</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_mid_desc">
+		<text>Цвет часов между порогами "хорошо" и "плохо".</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_bad">
+		<text>Цвет этапа: после порога "плохо"</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_bad_desc">
+		<text>Цвет часов после прохождения порога "плохо".</text>
+	</string>
+</string_table>

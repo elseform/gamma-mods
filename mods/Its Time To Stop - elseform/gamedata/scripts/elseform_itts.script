@@ -1,0 +1,571 @@
+--[[
+    It's Time To Stop (ITTS)
+    Author: elseform
+
+    Tracks real (wall-clock) time actually spent playing and shows it in the
+    PDA ranking tab's bottom caption strip: total per savegame plus the
+    current sitting ("session"). Also overlays an IRL clock on screen.
+
+    How it counts:
+    - Accumulates time_global() deltas between actor updates.
+    - actor_on_update does not fire in the main menu, pause menu, or during
+      level transitions / loading screens, so on resume a single oversized
+      delta arrives and is discarded by the clamp below. PDA / inventory /
+      dialogs are unpaused gameplay and therefore count.
+
+    Persistence:
+    - total_ms is synced with the alife storage (m_data / .scoc,
+      per-savegame) only at the save/load boundaries via the save_state /
+      load_state callbacks. Reset in on_game_start covers "New Game"
+      (load_state never fires there and would otherwise leak the previous
+      session's number). m_data must NOT be cached across loads:
+      CALifeStorageManager_load replaces the table.
+    - session_ms is not tied to the savegame. The engine tears the Lua VM
+      down on save loads / level transitions, so the session is mirrored
+      to a small file in appdata (rewritten every ~10 s of play and at
+      actor_on_net_destroy) and restored on the first actor update of a
+      fresh VM, as long as the break stayed under the MCM threshold. The
+      session therefore survives quickloads, save switches, level changes,
+      and even a crash + relaunch; a long break starts a new sitting.
+
+    Settings live in elseform_itts_mcm.script (MCM optional,
+    falls back to defaults).
+
+    Dependencies: none beyond stock GAMMA.
+--]]
+
+local CLAMP_MS = 1000 -- gaps longer than this are "not playing" and dropped
+local KEY      = "elseform_itts_ms"
+
+-- Engine-side stat row indices, measured and restored by
+-- modxml_elseform_itts.script whenever the ranking XML is reconciled.
+STAT_IDX = { total = nil, session = nil }
+
+local total_ms   = 0
+local session_ms = 0
+local last_tg    = nil
+local last_os    = nil   -- wall-clock (os.time) at the last actor update
+local gap_load   = false -- a load / level transition happened since then
+
+local function cfg(id)
+    return elseform_itts_mcm.get(id)
+end
+
+function set_stat_index(metric, i)
+    STAT_IDX[metric] = i
+end
+
+function reset_stat_indices()
+    STAT_IDX.total = nil
+    STAT_IDX.session = nil
+end
+
+function get_total_ms()   return total_ms   end
+function get_session_ms() return session_ms end
+
+-- Session persistence ---------------------------------------------------------
+-- Mirror-file mechanics: see "Persistence" in the file header.
+
+local SESSION_FILE     = "sessiontime"
+local SESSION_STORE_MS = 10000 -- refresh cadence of the mirror file
+
+local session_restored   = false -- one restore attempt per VM life
+local session_next_store = 0
+
+local function session_file_path()
+    local fs = getFS()
+    return fs and (fs:update_path("$app_data_root$", "") .. SESSION_FILE)
+end
+
+-- Threshold notifications ------------------------------------------------------
+-- One PDA message per upward threshold crossing: "time left" at the good
+-- threshold, "session exceeded" at the bad one. The same thresholds also
+-- drive the clock's optional progressive color. The current stage is
+-- persisted inside the session mirror so reloads never repeat a message,
+-- while a crossing that happens inside a counted loading gap still fires.
+-- Crossings are checked on the mirror's 10 s cadence: thresholds are
+-- minute-scale, and it keeps the cfg() lookups off the per-frame path.
+
+local notify_stage = nil -- 0 below good, 1 between, 2+ past bad; nil = unset
+
+local function stage_of(ms)
+    local min = ms / 60000
+    local bad = cfg("notify_bad") or 180
+    if min >= bad then
+        -- With repeats on, the stage keeps climbing every interval past
+        -- the bad threshold; each increment re-fires the "exceeded"
+        -- message through the ordinary stage-increase path (and stays
+        -- reload-proof, since the stage is persisted with the session).
+        if cfg("notify_repeat") then
+            local rep = cfg("notify_repeat_min") or 15
+            if rep > 0 then
+                return 2 + math.floor((min - bad) / rep)
+            end
+        end
+        return 2
+    end
+    if min >= (cfg("notify_good") or 120) then return 1 end
+    return 0
+end
+
+local function send_notification(text)
+    local actor = db and db.actor
+    if not actor then return end
+    local icon = (news_manager and news_manager.tips_icons
+        and news_manager.tips_icons["default"]) or "ui_inGame2_Poslednie_razrabotki"
+    actor:give_game_news(game.translate_string("ui_mcm_itts_stat_title"),
+        text, icon, 0, 10000)
+    if cfg("notify_sound") and xr_sound and xr_sound.set_sound_play then
+        xr_sound.set_sound_play(AC_ID, "pda_tips")
+    end
+end
+
+local function check_notify()
+    local stage = stage_of(session_ms)
+    if notify_stage == nil then
+        notify_stage = stage -- baseline: never announce already-past stages
+        return
+    end
+    -- Only the newly reached stage speaks: a jump straight past the bad
+    -- threshold (or across several repeat intervals) sends one message.
+    if stage > notify_stage and cfg("notify_enabled") then
+        if stage >= 2 then
+            send_notification(game.translate_string("st_elseform_itts_notify_over"))
+        else
+            local left = math.max(
+                math.ceil((cfg("notify_bad") or 180) - session_ms / 60000), 0)
+            send_notification(string.format(
+                game.translate_string("st_elseform_itts_notify_warn"), left))
+        end
+    end
+    notify_stage = stage
+end
+
+local function session_store(now)
+    local path = session_file_path()
+    local f = path and io.open(path, "w")
+    if not f then return end
+    f:write(string.format("%d %d %d", session_ms, now,
+        notify_stage or stage_of(session_ms)))
+    f:close()
+end
+
+local function session_restore(now)
+    session_restored = true
+    local path = session_file_path()
+    local f = path and io.open(path, "r")
+    if not f then return end
+    local ms, wall, stage = string.match(f:read("*a") or "", "^(%d+) (%d+) (%d+)")
+    f:close()
+    ms, wall, stage = tonumber(ms), tonumber(wall), tonumber(stage)
+    if not (ms and wall and stage) then return end
+
+    local gap = now - wall
+    if gap < 0 or gap > (cfg("session_break_min") or 20) * 60 then
+        return -- long break (or clock went backwards): new sitting
+    end
+    session_ms = ms
+    -- Pre-gap stage first, so a crossing inside the counted gap below is
+    -- seen as a transition and notifies.
+    notify_stage = stage
+    -- The gap is loading / menu / relaunch time; same opt-in as live gaps.
+    if gap > 0 and cfg("session_count_loadings") then
+        session_ms = session_ms + gap * 1000
+    end
+end
+
+function actor_on_update()
+    local tg = time_global()
+    local now = os.time()
+
+    if not session_restored then
+        session_restore(now)
+    end
+
+    local d = last_tg and (tg - last_tg) or 0
+
+    if d > 0 and d <= CLAMP_MS then
+        -- Normal frame: real play time.
+        total_ms   = total_ms + d
+        session_ms = session_ms + d
+    elseif d > CLAMP_MS then
+        -- Gap = we were not playing. Classify it: a load / level transition
+        -- was seen -> "loading"; otherwise -> "pause" (Esc menu, MCM,
+        -- console, alt-tab). Optionally count the gap's WALL duration
+        -- (os.time; time_global is frozen or unreliable during these)
+        -- into the session timer. Never into the per-save total.
+        local opt = gap_load and "session_count_loadings" or "session_count_pause"
+        if last_os and cfg(opt) then
+            local wall = now - last_os
+            if wall > 0 then
+                session_ms = session_ms + wall * 1000
+            end
+        end
+    end
+
+    gap_load = false
+    last_tg = tg
+    last_os = now
+
+    if tg >= session_next_store then
+        session_next_store = tg + SESSION_STORE_MS
+        check_notify()
+        session_store(now)
+    end
+end
+
+function save_state(m_data)
+    m_data[KEY] = total_ms
+end
+
+function load_state(m_data)
+    total_ms = m_data[KEY] or 0
+    -- Deliberately NOT resetting last_tg/last_os: the oversized delta on
+    -- the next update is what lets us measure and classify the gap (the
+    -- clamp already protects the totals from it).
+    gap_load = true
+end
+
+function format_time(ms)
+    local total_s = math.floor(ms / 1000)
+    local h = math.floor(total_s / 3600)
+    local m = math.floor((total_s % 3600) / 60)
+
+    local str_h = game.translate_string("st_elseform_itts_h")
+    local str_m = game.translate_string("st_elseform_itts_m")
+
+    if cfg("units") == "h" then
+        return string.format("%d %s", h, str_h)
+    end
+    -- "hm" (default)
+    if h > 0 then
+        return string.format("%d %s %d %s", h, str_h, m, str_m)
+    end
+    return string.format("%d %s", m, str_m)
+end
+
+-- pda.get_stat monkeypatch ---------------------------------------------------
+
+local orig_get_stat = nil
+
+local function itts_get_stat(index)
+    local it, is = STAT_IDX.total, STAT_IDX.session
+    if it and index == it then return format_time(total_ms)   end
+    if is and index == is then return format_time(session_ms) end
+
+    -- Rows positioned after our inserted nodes receive get_stat indices
+    -- shifted up by the number of our nodes before them; undo that shift
+    -- so the original stats keep their correct values.
+    local shift = 0
+    if it and index > it then shift = shift + 1 end
+    if is and index > is then shift = shift + 1 end
+    return orig_get_stat(index - shift)
+end
+
+-- IRL clock overlay ----------------------------------------------------------
+-- Screen-space HUD dialog. Compass presets are derived from the live minimap
+-- geometry; screen-corner presets remain in the 1024x768 virtual UI space.
+
+local POS = {
+    tl = { right = false, bottom = false },
+    tr = { right = true,  bottom = false },
+    bl = { right = false, bottom = true  },
+    br = { right = true,  bottom = true  },
+}
+
+-- Compass positions mirror the active HUD's own in-game clock anchor around
+-- the minimap center. modxml_elseform_itts reads that anchor from the winning
+-- zone_map XML, so these presets follow HUD replacements and aspect variants.
+local COMPASS_POS = {
+    p1         = { left = false, top = false }, -- below-right; swaps stock clock left
+    replace    = { left = false, top = false }, -- below-right; stock clock hidden
+    p2         = { left = false, top = true  }, -- above-right
+    compass_al = { left = true,  top = true  }, -- above-left
+    compass_bl = { left = true,  top = false }, -- below-left
+}
+
+local compass_layout = { x = 0.84, y = 0.90 }
+
+function set_compass_layout(x, y)
+    x = tonumber(x)
+    y = tonumber(y)
+    if x and x >= 0 and x <= 1 then compass_layout.x = x end
+    if y and y >= 0 and y <= 1 then compass_layout.y = y end
+end
+
+local CLR_PRESETS = {
+    itts_clr_default = { 220, 220, 220 },
+    itts_clr_white   = { 255, 255, 255 },
+    itts_clr_orange  = { 255, 160, 40  },
+    itts_clr_yellow  = { 255, 230, 60  },
+    itts_clr_green   = { 80,  255, 120 },
+    itts_clr_cyan    = { 60,  230, 230 },
+    itts_clr_red     = { 255, 60,  60  },
+    itts_clr_amber   = { 255, 191, 64  },
+    itts_clr_blue    = { 80,  160, 255 },
+    itts_clr_purple  = { 190, 110, 255 },
+    itts_clr_pink    = { 255, 105, 180 },
+    itts_clr_beige   = { 179, 152, 109 }, -- stock HUD clock tone
+}
+
+-- Progressive-mode stage -> fallback preset, if MCM hands back garbage.
+local STAGE_CLR_FALLBACK = {
+    good = "itts_clr_green",
+    mid  = "itts_clr_orange",
+    bad  = "itts_clr_red",
+}
+
+local FONT_PRESETS = {
+    letterica16 = { getter = GetFontLetterica16Russian, height = 20 },
+    letterica18 = { getter = GetFontLetterica18Russian, height = 22 },
+    letterica25 = { getter = GetFontLetterica25,        height = 30 },
+    graffiti19  = { getter = GetFontGraffiti19Russian,  height = 24 },
+    graffiti22  = { getter = GetFontGraffiti22Russian,  height = 28 },
+}
+
+local BLINK_PERIOD_MS = 1000 -- one soft separator pulse per second
+local BLINK_MIN_ALPHA = 90   -- dim floor of the pulse; never fully invisible
+
+class "UIIttsClock" (CUIScriptWnd)
+
+function UIIttsClock:__init() super()
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("elseform_itts_clock.xml")
+    self.txt = self.xml:InitStatic("itts_clock", self)
+    -- Separator-blink mode splits the time string into adjacent per-chunk
+    -- statics (odd slots = digits, even slots = ":"), because a single
+    -- static cannot fade just the colon glyphs. Created lazily.
+    self.segs = {}
+    self._used = 0   -- segment statics in use this refresh
+    self._clr = nil  -- base RGB while the separator pulse is armed
+    self._next = 0
+    self._compass_rect = Frect()
+    self._font_id = nil
+end
+
+function UIIttsClock:__finalize()
+end
+
+function UIIttsClock:GetCompassAnchor(pos_id)
+    local placement = COMPASS_POS[pos_id]
+    if not placement then return end
+
+    local maingame = ActorMenu and ActorMenu.get_maingame and ActorMenu.get_maingame()
+    local zone_map = maingame and maingame.UIZoneMap
+    if not zone_map then return end
+
+    local background = zone_map:Background()
+    if not background then return end
+    background:GetAbsoluteRect(self._compass_rect)
+
+    local rect = self._compass_rect
+    local nx = placement.left and (1 - compass_layout.x) or compass_layout.x
+    local ny = placement.top and (1 - compass_layout.y) or compass_layout.y
+    return rect.x1 + (rect.x2 - rect.x1) * nx,
+           rect.y1 + (rect.y2 - rect.y1) * ny
+end
+
+function UIIttsClock:ApplyFont()
+    local font_id = cfg("clock_font")
+    if self._font_id == font_id then return end
+
+    local preset = FONT_PRESETS[font_id] or FONT_PRESETS.letterica18
+    self.txt:TextControl():SetFont(preset.getter())
+    self.txt:SetWndSize(vector2():set(self.txt:GetWidth(), preset.height))
+    for i = 1, #self.segs do
+        local seg = self.segs[i]
+        seg:TextControl():SetFont(preset.getter())
+        seg:SetWndSize(vector2():set(seg:GetWidth(), preset.height))
+    end
+    self._font_id = font_id
+end
+
+function UIIttsClock:GetSeg(i)
+    local seg = self.segs[i]
+    if not seg then
+        seg = self.xml:InitStatic("itts_clock", self)
+        local preset = FONT_PRESETS[self._font_id] or FONT_PRESETS.letterica18
+        seg:TextControl():SetFont(preset.getter())
+        seg:SetWndSize(vector2():set(seg:GetWidth(), preset.height))
+        self.segs[i] = seg
+    end
+    return seg
+end
+
+function UIIttsClock:HideAll()
+    self.txt:Show(false)
+    for i = 1, #self.segs do
+        self.segs[i]:Show(false)
+    end
+end
+
+function UIIttsClock:Update()
+    CUIScriptWnd.Update(self)
+
+    local tg = time_global()
+    if tg >= self._next then
+        self._next = tg + 250
+        self:Refresh()
+    end
+
+    -- Smooth per-frame pulse on the ":" separators (even segment slots);
+    -- runs outside the 250 ms refresh throttle so it doesn't stutter.
+    local c = self._clr
+    if c then
+        local phase = (tg % BLINK_PERIOD_MS) / BLINK_PERIOD_MS
+        local wave = 0.5 + 0.5 * math.cos(phase * 2 * math.pi)
+        local a = math.floor(BLINK_MIN_ALPHA + (255 - BLINK_MIN_ALPHA) * wave)
+        for i = 2, self._used, 2 do
+            self.segs[i]:TextControl():SetTextColor(GetARGB(a, c[1], c[2], c[3]))
+        end
+    end
+end
+
+function UIIttsClock:Refresh()
+    self._clr = nil
+
+    if not cfg("clock_enabled") then
+        self:HideAll()
+        return
+    end
+
+    self:ApplyFont()
+
+    local text = os.date(cfg("clock_24h") and "%H:%M" or "%I:%M %p")
+
+    -- Fill the active control(s) and measure the total text size.
+    local blink = cfg("clock_blink") and true or false
+    local w, h
+    if blink then
+        self.txt:Show(false)
+        local chunks = str_explode(text, ":")
+        self._used = 2 * #chunks - 1
+        w = 0
+        for i = 1, self._used do
+            local seg = self:GetSeg(i)
+            seg:TextControl():SetText(i % 2 == 1 and chunks[(i + 1) / 2] or ":")
+            seg:AdjustWidthToText()
+            w = w + seg:GetWidth()
+        end
+        for i = self._used + 1, #self.segs do
+            self.segs[i]:Show(false)
+        end
+        h = self.segs[1]:GetHeight()
+    else
+        for i = 1, #self.segs do
+            self.segs[i]:Show(false)
+        end
+        self._used = 0
+        self.txt:TextControl():SetText(text)
+        self.txt:AdjustWidthToText()
+        w, h = self.txt:GetWidth(), self.txt:GetHeight()
+    end
+
+    local pos_id = cfg("clock_pos")
+    local ox = cfg("clock_off_x") or 0
+    local oy = cfg("clock_off_y") or 0
+    local x, y
+    if COMPASS_POS[pos_id] then
+        local cx, cy = self:GetCompassAnchor(pos_id)
+        if not cx then
+            self:HideAll()
+            return
+        end
+        x = cx - w / 2 + ox
+        y = cy - h / 2 + oy
+    else
+        local p = POS[pos_id] or POS.tr
+        x = (p.right and (1024 - w - 15) or 15) + ox
+        y = (p.bottom and (768 - h - 10) or 10) + oy
+    end
+
+    local c
+    if cfg("clock_progressive") then
+        -- Reuses the notification thresholds (notify_good / notify_bad).
+        local session_min = session_ms / 60000
+        local stage
+        if session_min < (cfg("notify_good") or 120) then
+            stage = "good"
+        elseif session_min < (cfg("notify_bad") or 180) then
+            stage = "mid"
+        else
+            stage = "bad"
+        end
+        c = CLR_PRESETS[cfg("clock_progressive_clr_" .. stage)]
+            or CLR_PRESETS[STAGE_CLR_FALLBACK[stage]]
+    elseif cfg("clock_custom") then
+        c = { cfg("clock_r") or 220, cfg("clock_g") or 220, cfg("clock_b") or 220 }
+    else
+        c = CLR_PRESETS[cfg("clock_clr")] or CLR_PRESETS.itts_clr_default
+    end
+
+    local argb = GetARGB(255, c[1], c[2], c[3])
+    if blink then
+        local cursor = x
+        for i = 1, self._used do
+            local seg = self.segs[i]
+            seg:SetWndPos(vector2():set(cursor, y))
+            cursor = cursor + seg:GetWidth()
+            seg:TextControl():SetTextColor(argb)
+            seg:Show(true)
+        end
+        self._clr = c -- arms the per-frame separator pulse in Update
+    else
+        self.txt:SetWndPos(vector2():set(x, y))
+        self.txt:TextControl():SetTextColor(argb)
+        self.txt:Show(true)
+    end
+end
+
+local HUD = nil
+
+local function activate_hud()
+    if HUD == nil then
+        HUD = UIIttsClock()
+        get_hud():AddDialogToRender(HUD)
+    end
+end
+
+local function deactivate_hud()
+    if HUD ~= nil then
+        get_hud():RemoveDialogToRender(HUD)
+        HUD = nil
+    end
+end
+
+function actor_on_first_update()
+    activate_hud()
+end
+
+function actor_on_net_destroy()
+    gap_load = true -- level transition / exit: the coming gap is a loading
+    session_store(os.time()) -- freshest stamp before a possible VM teardown
+    deactivate_hud()
+end
+
+function on_screen_resolution_changed()
+    deactivate_hud()
+    activate_hud()
+end
+
+-- Callbacks ------------------------------------------------------------------
+
+function on_game_start()
+    -- Reset the per-save total for new game; a loaded save restores it via
+    -- load_state right after. session_ms and last_tg/last_os intentionally
+    -- not touched (session survives loads; the stale timestamps are what
+    -- the gap measurement needs).
+    total_ms = 0
+
+    if pda and pda.get_stat and pda.get_stat ~= itts_get_stat then
+        orig_get_stat = pda.get_stat
+        pda.get_stat = itts_get_stat
+    end
+
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+    RegisterScriptCallback("on_screen_resolution_changed", on_screen_resolution_changed)
+end

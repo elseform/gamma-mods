@@ -1,0 +1,388 @@
+--[[
+    It's Time To Stop (ITTS) - MCM settings
+    Author: elseform
+
+    Three subpages: "clock" (real-time HUD clock overlay), "notify"
+    (session thresholds, PDA notifications, progressive clock color) and
+    "stats" (playtime rows in the PDA + session accounting). Values live
+    under elseform_itts/<page>/<id>; get() takes the bare id and resolves
+    the page itself, falling back to DEF when MCM is absent, so the mod
+    works on stock GAMMA without any hard dependency.
+
+    Option notes:
+    - clock_pos "p1" / "replace" (which relocate or hide the stock
+      in-game clock) is applied when the HUD XML is parsed -> full game
+      restart to apply. PDA row toggles are reconciled when the ranking XML
+      is parsed -> reload a save with the PDA closed to apply.
+    - everything else applies immediately.
+--]]
+
+DEF = {
+	clock = {
+		clock_enabled = true,
+		clock_pos = "p2",
+		clock_off_x = 0,
+		clock_off_y = 0,
+		clock_24h = true,
+		clock_blink = false,
+		clock_font = "letterica16",
+		clock_clr = "itts_clr_amber",
+		clock_custom = false,
+		clock_r = 220,
+		clock_g = 220,
+		clock_b = 220,
+	},
+	notify = {
+		notify_enabled = false,
+		notify_good = 120,
+		notify_bad = 180,
+		notify_repeat = false,
+		notify_repeat_min = 15,
+		notify_sound = true,
+		clock_progressive = false,
+		clock_progressive_clr_good = "itts_clr_green",
+		clock_progressive_clr_mid = "itts_clr_orange",
+		clock_progressive_clr_bad = "itts_clr_red",
+	},
+	stats = {
+		show_total = true,
+		show_session = true,
+		units = "hm",
+		session_count_pause = false,
+		session_count_loadings = true,
+		session_break_min = 20,
+	},
+}
+
+local PAGE = {} -- option id -> subpage id, derived from DEF
+for page, opts in pairs(DEF) do
+	for id in pairs(opts) do
+		PAGE[id] = page
+	end
+end
+
+function get(id)
+	local page = PAGE[id]
+	if not page then return nil end
+	if ui_mcm and ui_mcm.get then
+		local v = ui_mcm.get("elseform_itts/" .. page .. "/" .. id)
+		if v ~= nil then
+			return v
+		end
+	end
+	return DEF[page][id]
+end
+
+-- Shared by the main clock color and the progressive stage colors.
+local clr_content = {
+	{ "itts_clr_default", "itts_clr_default" },
+	{ "itts_clr_white", "itts_clr_white" },
+	{ "itts_clr_orange", "itts_clr_orange" },
+	{ "itts_clr_yellow", "itts_clr_yellow" },
+	{ "itts_clr_green", "itts_clr_green" },
+	{ "itts_clr_cyan", "itts_clr_cyan" },
+	{ "itts_clr_red", "itts_clr_red" },
+	{ "itts_clr_amber", "itts_clr_amber" },
+	{ "itts_clr_blue", "itts_clr_blue" },
+	{ "itts_clr_purple", "itts_clr_purple" },
+	{ "itts_clr_pink", "itts_clr_pink" },
+	{ "itts_clr_beige", "itts_clr_beige" },
+}
+
+local function title()
+	return {
+		id = "title",
+		type = "slide",
+		link = "ui_options_slider_player",
+		text = "ui_mcm_itts_stat_title",
+		size = { 512, 50 },
+		spacing = 20,
+	}
+end
+
+function on_mcm_load()
+	local op = {
+		id = "elseform_itts",
+		text = "ui_mcm_menu_itts_stat",
+		gr = {
+			{
+				id = "clock",
+				sh = true,
+				text = "ui_mcm_menu_itts_clock",
+				gr = {
+					title(),
+					{
+						id = "clock_enabled",
+						type = "check",
+						val = 1,
+						def = DEF.clock.clock_enabled,
+						hint = "itts_stat_clock_enabled",
+					},
+					{
+						id = "clock_pos",
+						type = "list",
+						val = 0,
+						def = DEF.clock.clock_pos,
+						hint = "itts_stat_clock_pos",
+						content = {
+							{ "compass_al", "itts_clock_pos_compass_al" },
+							{ "p2", "itts_clock_pos_compass_ar" },
+							{ "compass_bl", "itts_clock_pos_compass_bl" },
+							{ "p1", "itts_clock_pos_compass_br" },
+							{ "replace", "itts_clock_pos_compass_br_replace" },
+							{ "tl", "itts_clock_pos_screen_tl" },
+							{ "tr", "itts_clock_pos_screen_tr" },
+							{ "bl", "itts_clock_pos_screen_bl" },
+							{ "br", "itts_clock_pos_screen_br" },
+						},
+					},
+					{
+						id = "clock_off_x",
+						type = "track",
+						val = 2,
+						min = -200,
+						max = 200,
+						step = 5,
+						def = DEF.clock.clock_off_x,
+						hint = "itts_stat_clock_off_x",
+					},
+					{
+						id = "clock_off_y",
+						type = "track",
+						val = 2,
+						min = -200,
+						max = 200,
+						step = 5,
+						def = DEF.clock.clock_off_y,
+						hint = "itts_stat_clock_off_y",
+					},
+					{ id = "divider1", type = "line" },
+					{
+						id = "clock_24h",
+						type = "check",
+						val = 1,
+						def = DEF.clock.clock_24h,
+						hint = "itts_stat_clock_24h",
+					},
+					{
+						id = "clock_blink",
+						type = "check",
+						val = 1,
+						def = DEF.clock.clock_blink,
+						hint = "itts_stat_clock_blink",
+					},
+					{
+						id = "clock_font",
+						type = "list",
+						val = 0,
+						def = DEF.clock.clock_font,
+						hint = "itts_stat_clock_font",
+						content = {
+							{ "letterica16", "itts_font_letterica16" },
+							{ "letterica18", "itts_font_letterica18" },
+							{ "letterica25", "itts_font_letterica25" },
+							{ "graffiti19", "itts_font_graffiti19" },
+							{ "graffiti22", "itts_font_graffiti22" },
+						},
+					},
+					{ id = "divider2", type = "line" },
+					{
+						id = "clock_clr",
+						type = "list",
+						val = 0,
+						def = DEF.clock.clock_clr,
+						hint = "itts_stat_clock_clr",
+						content = clr_content,
+					},
+					{
+						id = "clock_custom",
+						type = "check",
+						val = 1,
+						def = DEF.clock.clock_custom,
+						hint = "itts_stat_clock_custom",
+					},
+					{
+						id = "clock_r",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 255,
+						step = 5,
+						def = DEF.clock.clock_r,
+						hint = "itts_stat_clock_r",
+					},
+					{
+						id = "clock_g",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 255,
+						step = 5,
+						def = DEF.clock.clock_g,
+						hint = "itts_stat_clock_g",
+					},
+					{
+						id = "clock_b",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 255,
+						step = 5,
+						def = DEF.clock.clock_b,
+						hint = "itts_stat_clock_b",
+					},
+				},
+			},
+			{
+				id = "notify",
+				sh = true,
+				text = "ui_mcm_menu_itts_notify",
+				gr = {
+					title(),
+					{
+						id = "notify_enabled",
+						type = "check",
+						val = 1,
+						def = DEF.notify.notify_enabled,
+						hint = "itts_stat_notify_enabled",
+					},
+					{
+						id = "notify_good",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 600,
+						step = 5,
+						def = DEF.notify.notify_good,
+						hint = "itts_stat_notify_good",
+					},
+					{
+						id = "notify_bad",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 600,
+						step = 5,
+						def = DEF.notify.notify_bad,
+						hint = "itts_stat_notify_bad",
+					},
+					{
+						id = "notify_repeat",
+						type = "check",
+						val = 1,
+						def = DEF.notify.notify_repeat,
+						hint = "itts_stat_notify_repeat",
+					},
+					{
+						id = "notify_repeat_min",
+						type = "track",
+						val = 2,
+						min = 5,
+						max = 120,
+						step = 5,
+						def = DEF.notify.notify_repeat_min,
+						hint = "itts_stat_notify_repeat_min",
+					},
+					{
+						id = "notify_sound",
+						type = "check",
+						val = 1,
+						def = DEF.notify.notify_sound,
+						hint = "itts_stat_notify_sound",
+					},
+					{ id = "divider1", type = "line" },
+					{
+						id = "clock_progressive",
+						type = "check",
+						val = 1,
+						def = DEF.notify.clock_progressive,
+						hint = "itts_stat_clock_progressive",
+					},
+					{
+						id = "clock_progressive_clr_good",
+						type = "list",
+						val = 0,
+						def = DEF.notify.clock_progressive_clr_good,
+						hint = "itts_stat_clock_progressive_clr_good",
+						content = clr_content,
+					},
+					{
+						id = "clock_progressive_clr_mid",
+						type = "list",
+						val = 0,
+						def = DEF.notify.clock_progressive_clr_mid,
+						hint = "itts_stat_clock_progressive_clr_mid",
+						content = clr_content,
+					},
+					{
+						id = "clock_progressive_clr_bad",
+						type = "list",
+						val = 0,
+						def = DEF.notify.clock_progressive_clr_bad,
+						hint = "itts_stat_clock_progressive_clr_bad",
+						content = clr_content,
+					},
+				},
+			},
+			{
+				id = "stats",
+				sh = true,
+				text = "ui_mcm_menu_itts_stats",
+				gr = {
+					title(),
+					{
+						id = "show_total",
+						type = "check",
+						val = 1,
+						def = DEF.stats.show_total,
+						hint = "itts_stat_show_total",
+					},
+					{
+						id = "show_session",
+						type = "check",
+						val = 1,
+						def = DEF.stats.show_session,
+						hint = "itts_stat_show_session",
+					},
+					{
+						id = "units",
+						type = "list",
+						val = 0,
+						def = DEF.stats.units,
+						hint = "itts_stat_units",
+						content = {
+							{ "hm", "itts_units_hm" },
+							{ "h", "itts_units_h" },
+						},
+					},
+					{ id = "divider1", type = "line" },
+					{
+						id = "session_count_pause",
+						type = "check",
+						val = 1,
+						def = DEF.stats.session_count_pause,
+						hint = "itts_stat_session_count_pause",
+					},
+					{
+						id = "session_count_loadings",
+						type = "check",
+						val = 1,
+						def = DEF.stats.session_count_loadings,
+						hint = "itts_stat_session_count_loadings",
+					},
+					{
+						id = "session_break_min",
+						type = "track",
+						val = 2,
+						min = 5,
+						max = 240,
+						step = 5,
+						def = DEF.stats.session_break_min,
+						hint = "itts_stat_session_break_min",
+					},
+				},
+			},
+		},
+	}
+	return op
+end

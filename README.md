@@ -18,6 +18,23 @@ Features customizable options:
 
 Path: `mods/Flashing Inventory Highlights - elseform`
 
+### It's Time To Stop (ITTS)
+
+Tracks real-world playtime and helps you keep sessions from running longer than
+intended.
+
+- Adds total playtime and current-session rows to the PDA ranking tab.
+- Adds an optional real-life HUD clock with configurable placement, fonts, and
+  colors.
+- Sends configurable session-threshold reminders, with optional repeats and a
+  PDA beep.
+- Can progressively change the HUD clock color as a session crosses its warning
+  thresholds.
+- Installs as a standalone MO2 mod with no load-order requirements or
+  dependencies beyond stock GAMMA.
+
+Path: `mods/Its Time To Stop - elseform`
+
 ### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
 Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.

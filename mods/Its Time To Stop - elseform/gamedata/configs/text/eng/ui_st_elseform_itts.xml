@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
+<string_table>
+	<string id="st_elseform_itts_label">
+		<text>Time Played:</text>
+	</string>
+	<string id="st_elseform_itts_session_label">
+		<text>Session:</text>
+	</string>
+	<string id="st_elseform_itts_h">
+		<text>h</text>
+	</string>
+	<string id="st_elseform_itts_m">
+		<text>min</text>
+	</string>
+	<string id="st_elseform_itts_notify_warn">
+		<text>%d minutes of set play session left.</text>
+	</string>
+	<string id="st_elseform_itts_notify_over">
+		<text>Play session time exceeded. Touch grass and get some sun, please.</text>
+	</string>
+	<!-- MCM -->
+	<string id="ui_mcm_menu_itts_stat">
+		<text>%c[255,255,160,40]Its Time To Stop</text>
+	</string>
+	<string id="ui_mcm_menu_itts_clock">
+		<text>Real-time HUD Clock</text>
+	</string>
+	<string id="ui_mcm_menu_itts_notify">
+		<text>Session Notifications</text>
+	</string>
+	<string id="ui_mcm_menu_itts_stats">
+		<text>Playtime Stats</text>
+	</string>
+	<string id="ui_mcm_itts_stat_title">
+		<text>It's Time To Stop</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_pause">
+		<text>Session: count pauses</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_pause_desc">
+		<text>Include time spent in the pause menu, MCM, console, or alt-tabbed in the session timer (measured by wall clock). Total Time Played never counts it.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_loadings">
+		<text>Session: count loading screens</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_count_loadings_desc">
+		<text>Include loading screens, level transitions, main-menu time between loads, and short game restarts in the session timer. Total Time Played never counts it.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_break_min">
+		<text>Session: break threshold (minutes)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_session_break_min_desc">
+		<text>The session timer keeps running through loads, level transitions, and even game restarts. It starts over only after you have been away longer than this (game closed, crash, or idling in the main menu that long).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_units">
+		<text>Time detail</text>
+	</string>
+	<string id="ui_mcm_itts_stat_units_desc">
+		<text>How detailed the time values are. Applies immediately.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_units_hm">
+		<text>Hours, minutes</text>
+	</string>
+	<string id="ui_mcm_lst_itts_units_h">
+		<text>Hours only</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_total">
+		<text>Show total playtime stat in PDA</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_total_desc">
+		<text>Show the Time Played row in the PDA statistics strip. Applied on game restart.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_session">
+		<text>Show session playtime stat in PDA</text>
+	</string>
+	<string id="ui_mcm_itts_stat_show_session_desc">
+		<text>Show the Session row in the PDA statistics strip. Applied on game restart.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_enabled">
+		<text>Display real-time HUD clock</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_enabled_desc">
+		<text>Show the real local-time clock on the HUD.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_pos">
+		<text>Clock position</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_pos_desc">
+		<text>Compass presets follow the active minimap and mirror its stock clock anchor. The below-right presets either move the stock in-game clock to below-left or replace it entirely. Restart required.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_al">
+		<text>Compass: above-left</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_ar">
+		<text>Compass: above-right</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_bl">
+		<text>Compass: below-left</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_br">
+		<text>Compass: below-right (swap with in-game clock)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_compass_br_replace">
+		<text>Compass: below-right (replace in-game clock)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_tl">
+		<text>Screen: top-left</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_tr">
+		<text>Screen: top-right</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_bl">
+		<text>Screen: bottom-left</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clock_pos_screen_br">
+		<text>Screen: bottom-right</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_x">
+		<text>Clock X offset</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_x_desc">
+		<text>Fine-tune the clock position horizontally.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_y">
+		<text>Clock Y offset</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_off_y_desc">
+		<text>Fine-tune the clock position vertically.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_24h">
+		<text>24-hour clock</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_24h_desc">
+		<text>Off = 12-hour format with AM/PM.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_blink">
+		<text>Blinking separators</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_blink_desc">
+		<text>Softly pulse the ':' separators of the real-life clock once per second. Subtle: they dim, never disappear.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_font">
+		<text>Clock font</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_font_desc">
+		<text>Font used by the real-life HUD clock.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica16">
+		<text>Letterica 16 (compact)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica18">
+		<text>Letterica 18</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_letterica25">
+		<text>Letterica 25 (large)</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_graffiti19">
+		<text>Graffiti 19</text>
+	</string>
+	<string id="ui_mcm_lst_itts_font_graffiti22">
+		<text>Graffiti 22</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_clr">
+		<text>Clock color</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_clr_desc">
+		<text>Color preset, so the real clock is distinguishable from the in-game one at a glance.</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_default">
+		<text>Light-Grey</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_white">
+		<text>White</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_orange">
+		<text>Orange</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_yellow">
+		<text>Yellow</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_green">
+		<text>Green</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_cyan">
+		<text>Cyan</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_red">
+		<text>Red</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_amber">
+		<text>Amber</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_blue">
+		<text>Blue</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_purple">
+		<text>Purple</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_pink">
+		<text>Pink</text>
+	</string>
+	<string id="ui_mcm_lst_itts_clr_beige">
+		<text>Beige</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_custom">
+		<text>Custom clock color</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_custom_desc">
+		<text>Use the RGB sliders below instead of a preset.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_r">
+		<text>Custom color: red</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_r_desc">
+		<text>Red component of the custom clock color (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_g">
+		<text>Custom color: green</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_g_desc">
+		<text>Green component of the custom clock color (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_b">
+		<text>Custom color: blue</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_b_desc">
+		<text>Blue component of the custom clock color (0-255).</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_enabled">
+		<text>PDA notifications</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_enabled_desc">
+		<text>Send a PDA message from It's Time To Stop when the session crosses the thresholds below: the time left at the good threshold, and a reminder to stop at the bad one. One message per crossing.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_good">
+		<text>"Good" threshold (minutes)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_good_desc">
+		<text>Crossing this session length sends a PDA warning with the time left until the bad threshold. The progressive clock color also switches to its middle stage here.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_bad">
+		<text>"Bad" threshold (minutes)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_bad_desc">
+		<text>Crossing this session length sends the "session exceeded" PDA message. The progressive clock color also switches to its final stage here.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat">
+		<text>Repeated session end notification</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_desc">
+		<text>Keep re-sending the "session exceeded" message after the bad threshold, at the interval below.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_min">
+		<text>Repeat interval (minutes)</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_repeat_min_desc">
+		<text>How much more play time passes between repeated "session exceeded" messages.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_sound">
+		<text>Notification sound</text>
+	</string>
+	<string id="ui_mcm_itts_stat_notify_sound_desc">
+		<text>Play the PDA beep with the notification.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive">
+		<text>Progressive color by session length</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_desc">
+		<text>Change the clock color automatically as your current session crosses the notification thresholds above. Overrides the color preset and custom color.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_good">
+		<text>Stage color: below good threshold</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_good_desc">
+		<text>Clock color while the session is shorter than the good threshold.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_mid">
+		<text>Stage color: between thresholds</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_mid_desc">
+		<text>Clock color between the good and bad thresholds.</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_bad">
+		<text>Stage color: past bad threshold</text>
+	</string>
+	<string id="ui_mcm_itts_stat_clock_progressive_clr_bad_desc">
+		<text>Clock color once the session passes the bad threshold.</text>
+	</string>
+	<string id="ui_mcm_elseform_itts_divider1">
+		<text>divider1</text>
+	</string>
+</string_table>

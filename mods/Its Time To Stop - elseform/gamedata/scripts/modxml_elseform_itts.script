@@ -1,0 +1,282 @@
+--[[
+    It's Time To Stop (ITTS) - UI patch
+    Author: elseform
+
+    DXML patches:
+
+    1. pda_ranking.xml / pda_ranking_16.xml: reconciles the enabled stat rows
+       (total time played, current session) in the bottom caption strip each
+       time the XML is parsed, including after a save reload. If the
+       near-useless "Unlocked Articles" caption sits in that strip it is
+       parked off-screen to free room, NOT removed: the engine maps row
+       i -> pda.get_stat(i) in document order, so removing a node would
+       shift every stat after it onto the wrong value. The measured
+       document-order index of each inserted row is passed to
+       elseform_itts, whose pda.get_stat wrapper is shift-aware. Original
+       stock coordinates are retained in private attributes so toggling rows
+       repeatedly can restore and rebuild the layout without drift.
+
+       Strip layout (UIRankingWnd.cpp): each <stat> spawns TWO text wnds -
+       the caption (AdjustWidthToText'd) and the value, hard-placed at
+       caption.x + caption_text_width + 5. The node's width/align leak
+       into the value wnd, so they must be left at compact defaults
+       (width=24, align="l"); "centering in slots" via those attrs makes
+       the value float mid-slot and overlap the next caption. The only
+       usable knob is each stat's x, so the strip is justified: pair
+       widths are estimated from translated caption strings (cp1251, so
+       # == glyph count) plus a typical value, and the leftover width is
+       spread as equal gutters between pairs.
+
+    2. zone_map*.xml: reads the active HUD's stock clock anchor for the
+       compass-relative presets. When the IRL clock position is "p1"
+       (compass below-right), the stock clock is mirrored to below-left.
+       That relocation is applied at XML parse time -> restart.
+
+    NOTE: insertFromXMLString position is "insert before kid N" (1-based),
+    so a true append needs #kids + 1.
+--]]
+
+local MARKER = "elseform_itts"
+local ORIG_X = "elseform_itts_orig_x"
+local ORIG_Y = "elseform_itts_orig_y"
+
+local METRICS = {
+    { id = "total",   label = "st_elseform_itts_label" },
+    { id = "session", label = "st_elseform_itts_session_label" },
+}
+
+-- Bottom caption strip geometry (stock: y=264, captions from x=45..765).
+local ROW_Y    = 264
+local STRIP_X0 = 45
+local STRIP_W  = 720
+
+-- Pair-width budgeting for the justified strip layout. Fonts cannot be
+-- measured from script at XML-parse time; a flat per-glyph estimate is
+-- close enough to balance gutters (the engine still lays the real text
+-- out itself, estimates only pick the x anchors).
+local EST_CHAR_W    = 7   -- avg letterica16/18 glyph, 1024-space px
+local VALUE_GAP     = 5   -- engine-fixed caption -> value spacing
+local STOCK_VAL_EST = 40  -- typical short stock value, e.g. "11/21"
+local MIN_GUTTER    = 10
+
+local function translated_w(id)
+    local s = game.translate_string(id) or id
+    return #s * EST_CHAR_W
+end
+
+-- Worst-typical rendered time for our rows, per the units setting.
+local function time_value_est()
+    local h = game.translate_string("st_elseform_itts_h")
+    local sample
+    if elseform_itts_mcm.get("units") == "h" then
+        sample = "23 " .. h
+    else
+        sample = "5 " .. h .. " 53 " .. game.translate_string("st_elseform_itts_m")
+    end
+    return #sample * EST_CHAR_W
+end
+
+local function stat_label(xml_obj, stat_el)
+    local text_el = xml_obj:query("text", stat_el)[1]
+    return text_el and xml_obj:getText(text_el) or ""
+end
+
+local function patch_ranking(xml_obj)
+    local stat_info = xml_obj:query("stat_info")[1]
+    if not stat_info then return end
+
+    -- Decide the desired row set before looking at the current XML. A cached
+    -- included file may already contain rows produced by a previous VM/MCM
+    -- state, so "already patched" is not enough to know that it is current.
+    local metrics = {}
+    for _, m in ipairs(METRICS) do
+        if elseform_itts_mcm.get("show_" .. m.id) then
+            metrics[#metrics + 1] = m
+        end
+    end
+
+    -- Re-register indices even when the XML is already correct. Save loads
+    -- recreate the Lua VM (and reset STAT_IDX) while the ranking XML may be
+    -- reused, which otherwise leaves a caption whose value is the stock "".
+    elseform_itts.reset_stat_indices()
+    local existing = {}
+    local existing_nodes = {}
+    local stats = xml_obj:query("stat_info > stat")
+    for i, el in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(el)
+        if attr[MARKER] then
+            existing[#existing + 1] = { id = attr[MARKER], index = i - 1 }
+            existing_nodes[#existing_nodes + 1] = el
+        end
+    end
+
+    local current = #existing == #metrics
+    if current then
+        for i, row in ipairs(existing) do
+            if row.id ~= metrics[i].id then
+                current = false
+                break
+            end
+        end
+    end
+
+    if current then
+        for _, row in ipairs(existing) do
+            elseform_itts.set_stat_index(row.id, row.index)
+        end
+        return
+    end
+
+    -- MCM state changed since this XML table was built. Remove our old rows,
+    -- then restore every stock strip node to the coordinates saved before the
+    -- first ITTS layout pass. Keeping these private attributes makes repeated
+    -- enable/disable cycles idempotent, including cached include tables.
+    for _, el in ipairs(existing_nodes) do
+        xml_obj:removeElement(el)
+    end
+
+    stats = xml_obj:query("stat_info > stat")
+    for _, el in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(el)
+        if attr[ORIG_X] and attr[ORIG_Y] then
+            xml_obj:setElementAttr(el, { x = attr[ORIG_X], y = attr[ORIG_Y] })
+        end
+    end
+
+    -- With both rows off, removal plus baseline restoration is the complete
+    -- patch. The stock layout (including Unlocked Articles) is visible again.
+    if #metrics == 0 then return end
+
+    -- Collect the restored bottom strip and preserve its baseline before this
+    -- pass moves anything. On first install these attrs are written here; on
+    -- later reconciliations they already contain the unmodified coordinates.
+    local strip = {}
+    stats = xml_obj:query("stat_info > stat")
+    for _, el in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(el)
+        if tonumber(attr.y) == ROW_Y then
+            if not attr[ORIG_X] or not attr[ORIG_Y] then
+                xml_obj:setElementAttr(el, {
+                    [ORIG_X] = attr.x,
+                    [ORIG_Y] = attr.y,
+                })
+            end
+            strip[#strip + 1] = {
+                el = el,
+                x = tonumber(attr.x) or 0,
+                label = stat_label(xml_obj, el),
+            }
+        end
+    end
+
+    -- "Unlocked Articles" is the caption we sacrifice for room, but only
+    -- when it actually sits in the strip; in reworked layouts without it
+    -- nothing is hidden and the strip simply gets more pairs.
+    for i, s in ipairs(strip) do
+        if s.label == "pda_stat_16" then
+            xml_obj:setElementAttr(s.el, { x = -2000, y = -2000 })
+            table.remove(strip, i)
+            break
+        end
+    end
+
+    -- Justify: estimate each caption+value pair's rendered width, then
+    -- spread the leftover strip width as equal gutters between pairs.
+    -- Only x is touched; width/align must stay compact (see header).
+    table.sort(strip, function(a, b) return a.x < b.x end)
+
+    local widths = {}
+    for _, s in ipairs(strip) do
+        widths[#widths + 1] = translated_w(s.label) + VALUE_GAP + STOCK_VAL_EST
+    end
+    local our_val = time_value_est()
+    for _, m in ipairs(metrics) do
+        widths[#widths + 1] = translated_w(m.label) + VALUE_GAP + our_val
+    end
+
+    -- Leftover split into #pairs + 1 gutters: the strip gets the same
+    -- breathing room at its left and right edges as between pairs.
+    local total = 0
+    for _, w in ipairs(widths) do total = total + w end
+    local gutter = (STRIP_W - total) / (#widths + 1)
+    if gutter < MIN_GUTTER then gutter = MIN_GUTTER end
+
+    local xs = {}
+    local cursor = STRIP_X0 + gutter
+    for i, w in ipairs(widths) do
+        xs[i] = math.floor(cursor + 0.5)
+        cursor = cursor + w + gutter
+    end
+
+    for i, s in ipairs(strip) do
+        xml_obj:setElementAttr(s.el, { x = xs[i] })
+    end
+
+    -- Inserted rows adopt the strip's own font so the row reads uniform.
+    local strip_font = "letterica16"
+    if strip[1] then
+        local text_el = xml_obj:query("text", strip[1].el)[1]
+        local a = text_el and xml_obj:getElementAttr(text_el)
+        if a and a.font then strip_font = a.font end
+    end
+
+    -- Insert our rows (append; see NOTE in the header about the +1).
+    for j, m in ipairs(metrics) do
+        xml_obj:insertFromXMLString(
+            string.format(
+                [[<stat x="%d" y="%d" width="24" height="16" %s="%s"><text align="l" font="%s" r="220" g="220" b="220">%s</text></stat>]],
+                xs[#strip + j], ROW_Y, MARKER, m.id, strip_font, m.label
+            ),
+            stat_info,
+            #stat_info.kids + 1
+        )
+    end
+
+    -- Trust nothing: measure where our nodes actually landed in document
+    -- order; those indices are what the engine will call get_stat with.
+    local after = xml_obj:query("stat_info > stat")
+    for i, el in ipairs(after) do
+        local attr = xml_obj:getElementAttr(el)
+        if attr[MARKER] then
+            elseform_itts.set_stat_index(attr[MARKER], i - 1)
+        end
+    end
+end
+
+local function patch_zone_map(xml_obj)
+    local cw = xml_obj:query("minimap > clock_wnd")[1]
+    if not cw then return end
+
+    local attr = xml_obj:getElementAttr(cw)
+    local x = tonumber(attr.x)
+    local y = tonumber(attr.y)
+    elseform_itts.set_compass_layout(x, y)
+
+    -- Free the stock below-right anchor for the real-life clock: "p1"
+    -- mirrors the in-game clock across the minimap center (preserving
+    -- custom HUD clock geometry instead of assuming stock 0.84 -> 0.16);
+    -- "replace" parks it far outside the minimap so only ours remains.
+    local pos = elseform_itts_mcm.get("clock_pos")
+    if x then
+        if pos == "p1" then
+            xml_obj:setElementAttr(cw, { x = string.format("%.6g", 1 - x) })
+        elseif pos == "replace" then
+            xml_obj:setElementAttr(cw, { x = 5, y = 5 })
+        end
+    end
+end
+
+function on_xml_read()
+    RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+        if xml_file_name == [[ui\pda_ranking.xml]]
+        or xml_file_name == [[ui\pda_ranking_16.xml]]
+        then
+            patch_ranking(xml_obj)
+        elseif xml_file_name == [[ui\zone_map.xml]]
+        or xml_file_name == [[ui\zone_map_16.xml]]
+        or xml_file_name == [[ui\zone_map_21.xml]]
+        then
+            patch_zone_map(xml_obj)
+        end
+    end)
+end
