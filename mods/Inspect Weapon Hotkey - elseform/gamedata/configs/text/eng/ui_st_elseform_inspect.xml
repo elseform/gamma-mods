@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_elseform_inspect">
+		<text>Inspect Weapon Hotkey</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_title">
+		<text>Inspect Weapon Hotkey</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_enabled">
+		<text>Enabled</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_keybind">
+		<text>Inspect key</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_keybind_desc">
+		<text>Plays the weapon inspect animation (the same bore animation shown the first time you draw a weapon). Only fires while the weapon is idle. Defaults to J.</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_modifier">
+		<text>Modifier</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_mode">
+		<text>Activation</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_update_mcm">
+		<text>Update MCM to configure the keybind. Inspect key defaults to J.</text>
+	</string>
+
+</string_table>

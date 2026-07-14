@@ -1,0 +1,126 @@
+-- Inspect Weapon Hotkey - elseform
+-- Plays the weapon "inspect" animation on a bindable key. It reuses the same
+-- anm_bore HUD motion the engine plays the first time you draw a fresh weapon
+-- (see grok_doom_weapons_inspect), so it works on any weapon that ships a bore
+-- animation, no per-weapon config needed.
+
+-- Defaults (used when MCM is absent) -----------------------------------------
+local enabled      = true
+local KEY          = DIK_keys.DIK_J
+local modifier     = 0
+local mode         = 0
+
+-- MCM keybind support probe (RavenAscendant pattern)
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+
+local block_repeat = false
+
+-- MCM menu -------------------------------------------------------------------
+function on_mcm_load()
+	local op = {
+		id = "elseform_inspect", sh = true, text = "ui_mcm_menu_elseform_inspect",
+		gr = {
+			{id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_elseform_inspect_title", size = {512, 50}, spacing = 20},
+			{id = "enabled",  type = "check",    val = 1, def = true},
+			{id = "keybind",  type = "key_bind", val = 2, def = KEY},
+			{id = "modifier", type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_modifier",
+				content = { {0, "mcm_kb_mod_none"}, {1, "mcm_kb_mod_shift"}, {2, "mcm_kb_mod_ctrl"}, {3, "mcm_kb_mod_alt"} }},
+			{id = "mode",     type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_mode",
+				content = { {0, "mcm_kb_mode_press"}, {1, "mcm_kb_mode_dtap"} }},
+			{id = "desc", type = "desc", text = "ui_mcm_elseform_inspect_update_mcm", clr = {255, 175, 0, 0},
+				precondition = { function() return not mcm_keybinds end }},
+		}
+	}
+	return op
+end
+
+local function load_settings()
+	if ui_mcm then
+		enabled  = ui_mcm.get("elseform_inspect/enabled")
+		KEY      = ui_mcm.get("elseform_inspect/keybind") or KEY
+		modifier = ui_mcm.get("elseform_inspect/modifier")
+		mode     = ui_mcm.get("elseform_inspect/mode")
+	end
+end
+
+function on_option_change(mcm)
+	if mcm then load_settings() end
+end
+
+-- Inspect action -------------------------------------------------------------
+local function restore()
+	block_repeat = false
+	local wpn = db.actor and db.actor:active_item()
+	if wpn then
+		wpn:switch_state(0)
+	end
+	return true
+end
+
+function do_inspect()
+	if block_repeat then return end
+	if not (db.actor and db.actor:alive()) then return end
+
+	local wpn = db.actor:active_item()
+	if not (wpn and IsWeapon(wpn)) then return end
+	-- Only fire from idle so we never cut into a reload, fire, or swap.
+	if wpn:get_state() ~= 0 then return end
+
+	local sec = wpn:section()
+	local hud = ini_sys:r_string_ex(sec, "hud")
+	if not hud then return end
+
+	-- Pick the right bore variant when a grenade launcher is attached.
+	local anim = (utils_item.addon_attached(wpn, "gl")
+		and (wpn:weapon_in_grenade_mode() and "anm_bore_g" or "anm_bore_w_gl"))
+		or "anm_bore"
+
+	-- Fall back to the plain bore if the GL-specific one is not defined,
+	-- and bail out entirely if the weapon has no bore/inspect animation.
+	if not ini_sys:r_string_ex(hud, anim) then
+		anim = "anm_bore"
+	end
+	if not ini_sys:r_string_ex(hud, anim) then return end
+
+	block_repeat = true
+	local length = wpn:play_hud_motion(anim, true, 0, 1, 0)
+
+	local snd = ini_sys:r_string_ex(sec, "snd_bore")
+	if snd and snd ~= "" and snd ~= "$no_sound" then
+		local snd_obj = xr_sound.get_safe_sound_object(snd)
+		if snd_obj then
+			snd_obj:play(db.actor, 0, sound_object.s2d)
+		end
+	end
+
+	CreateTimeEvent("elseform_inspect_e", "restore", (length or 1000) / 1000, restore)
+end
+
+-- Key handling ---------------------------------------------------------------
+function on_key_press(key)
+	if not enabled then return end
+	if key ~= KEY then return end
+
+	-- No-MCM fallback: plain single press.
+	if not mcm_keybinds then
+		do_inspect()
+		return
+	end
+
+	if mode == 0 then
+		if ui_mcm.get_mod_key(modifier) then
+			ui_mcm.simple_press("elseform_inspect", key, do_inspect)
+		end
+	elseif mode == 1 then
+		if ui_mcm.get_mod_key(modifier) and ui_mcm.double_tap("elseform_inspect", key) then
+			do_inspect()
+		end
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	load_settings()
+end

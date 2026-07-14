@@ -35,6 +35,22 @@ intended.
 
 Path: `mods/Its Time To Stop - elseform`
 
+### Inspect Weapon Hotkey
+
+Adds a configurable hotkey that plays the current weapon's existing inspect
+animation on demand.
+
+- Uses each weapon's own bore animation and sound, including grenade-launcher
+  variants.
+- Only starts while the weapon is idle, avoiding reload, firing, and weapon-swap
+  interruptions.
+- Provides MCM settings for enable state, key, modifier, and single-press or
+  double-tap activation.
+- Includes English and Russian localization and falls back to `J` when MCM is
+  unavailable.
+
+Path: `mods/Inspect Weapon Hotkey - elseform`
+
 ### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
 
 Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+	<string id="ui_mcm_menu_elseform_inspect">
+		<text>������ ������ �� �������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_title">
+		<text>������ ������ �� �������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_enabled">
+		<text>��������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_keybind">
+		<text>������� �������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_keybind_desc">
+		<text>����������� �������� ������� ������ (�� �� ��������, ��� � ��� ������ ���������� ������). ����������� ������ ����� ������ � �����. �� ��������� J.</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_modifier">
+		<text>�����������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_mode">
+		<text>���������</text>
+	</string>
+
+	<string id="ui_mcm_elseform_inspect_update_mcm">
+		<text>�������� MCM ��� ��������� �������. ������� ������� �� ��������� J.</text>
+	</string>
+
+</string_table>
