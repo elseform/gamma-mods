@@ -64,17 +64,6 @@ Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
 
 Path: `fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix`
 
-### SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue
-
-Script override for `267- Dynamic Dialog UI - Demonized`.
-
-- Keeps dialogue zoom and `Camera focus on NPC` behavior enabled.
-- Captures a stable NPC focus point when dialogue opens instead of sampling the animated `bip01_head` bone every frame.
-- Applies the captured head-height offset to the NPC root position so the camera still follows real NPC movement.
-- Load after `267- Dynamic Dialog UI - Demonized`.
-
-Path: `script-fixes/SCRIPT FIX - Dynamic Dialog UI - Demonized - Camera Twitching In Dialogue`
-
 ### SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly
 
 Script override for `G.A.M.M.A. Arti Recipes Overhaul`.
