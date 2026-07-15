@@ -1,0 +1,36 @@
+#include "common.h"
+
+Texture2D rt_tempzb;
+
+float4 m_hud_params;
+
+// [SHADER FIX] Metal (D3DMetal/DXMT) hardening.
+// This pass runs during the deferred GBuffer phase with RT0=position,
+// RT1=albedo/accumulator, RT2=heat, RT3=scope mask (rt_ssfx_temp, swapped in
+// by the engine for scopelense(2)). The original 3DSS shader wrote only
+// SV_Target3 + SV_Depth, leaving RT0-2 bound but unwritten — formally
+// undefined in both D3D11 and Metal. We now write all four targets and rely
+// on alpha blending (srcalpha/invsrcalpha, enabled in models_scope_zwrite.s):
+// RT0-2 output alpha=0 resolves to dst (GBuffer preserved exactly), RT3
+// output alpha=1 resolves to src (mask written exactly). Depth and stencil
+// behavior are unchanged.
+struct PSOutput
+{
+	float4 gbuf0 : SV_Target0;
+	float4 gbuf1 : SV_Target1;
+	float4 gbuf2 : SV_Target2;
+	float4 mask : SV_Target3;
+	float depth : SV_Depth;
+};
+
+PSOutput main(float4 hpos : SV_Position)
+{
+	PSOutput output;
+
+	output.gbuf0 = float4(0.0, 0.0, 0.0, 0.0); // alpha 0 -> blend keeps dst
+	output.gbuf1 = float4(0.0, 0.0, 0.0, 0.0); // alpha 0 -> blend keeps dst
+	output.gbuf2 = float4(0.0, 0.0, 0.0, 0.0); // alpha 0 -> blend keeps dst
+	output.mask = float4(1.0, 0.0, 0.0, 1.0);  // alpha 1 -> blend writes src
+	output.depth = rt_tempzb[hpos.xy].x;
+	return output;
+}

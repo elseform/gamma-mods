@@ -11,6 +11,8 @@ Features customizable options:
 - Orange default color;
 - Color presets and optional custom RGB sliders.
 
+In MCM, the mod appears as the purple `Flashing Item Highlights` entry.
+
 ## Install & Load order
 
 Install as any other MO2 mod, drop the archive onto MO2 window.

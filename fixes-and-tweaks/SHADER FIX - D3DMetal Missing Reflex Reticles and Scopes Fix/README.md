@@ -64,6 +64,12 @@ At lens-edge pixels `dot(xy,xy)` exceeds `radius²`, so the argument goes negati
 
 Also normalized the malformed comma-operator init on the same file (`float3 accum = (0.0,0.0,0.0)` → `float3(0.0,0.0,0.0)`; functionally identical, but valid HLSL for strict compilers). Affects every thermal optic (G36 RWAP Spec Ops, G3 DRS, G3 M-LOK kit, HK51 DRS, Gauss, the K98/Rem700/M98B thermal-color "skeet" variants, 1PN93N2 thermal).
 
+### 5. Scope depth-restore pass — partial MRT write (undefined GBuffer under Metal)
+
+`models_scope_zwrite.ps`, `models_scope_zwrite.s` (based on 3DSS 410's copies).
+
+The 3DSS depth-restore pass (`scopelense(2)`) runs during the deferred GBuffer phase with four render targets bound (RT0 position, RT1 albedo/accumulator, RT2 heat, RT3 scope mask — the engine swaps `rt_ssfx_temp` into slot 3 for this pass). The original shader wrote only `SV_Target3` + `SV_Depth`, leaving RT0–2 bound but unwritten — formally undefined in both D3D11 and Metal; it works today only because translators happen to preserve unwritten attachments. The engine's Lua API can't set per-RT write masks (`color_write_enable` applies one mask to all four RTs), so the fix uses blending instead: the `.s` enables `blend(true, blend.srcalpha, blend.invsrcalpha)` and the `.ps` writes all four targets — RT0–2 with alpha 0 (blend resolves to dst, GBuffer preserved exactly) and RT3 with alpha 1 (blend resolves to src, mask written exactly). All formats involved (RGBA16F/RGBA8) are blendable under Metal. Depth and stencil behavior unchanged. If 3DSS updates these two files, rebase and re-apply this change.
+
 ### TODO (not yet addressed — low priority)
 
 Same malformed comma-operator init `(0,0,0[,0])` exists in these shaders. Currently harmless because all components are equal (the collapse yields the correct zero vector), but worth normalizing to `float3(...)`/`float4(...)` in case DXMT's compiler rejects the syntax outright:
@@ -77,6 +83,11 @@ Same malformed comma-operator init `(0,0,0[,0])` exists in these shaders. Curren
 ---
 
 ## Changelog
+
+### 2026-07-16
+
+- Added `models_scope_zwrite.ps` / `models_scope_zwrite.s` (fix #5): the 3DSS depth-restore pass now writes all four bound MRTs with alpha-blend-based GBuffer preservation, removing formally-undefined partial MRT writes under D3DMetal/DXMT.
+- Delete `appdata/shaders_cache/` after updating.
 
 ### 2026-07-05
 

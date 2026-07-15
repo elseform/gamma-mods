@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
 	<string id="ui_mcm_menu_flash_hl">
-		<text>FIH</text>
+		<text>%c[255,190,90,255]Flashing Item Highlights</text>
 	</string>
 	<string id="ui_mcm_flash_hl_title">
 		<text>Flashing Inventory Highlights</text>
