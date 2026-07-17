@@ -2,35 +2,35 @@
 <string_table>
 
 	<string id="ui_mcm_menu_elseform_inspect">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Inspect Weapon Hotkey</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_title">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Осмотр оружия</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_enabled">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Включить</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_keybind">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Клавиша осмотра</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_keybind_desc">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ). пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ J.</text>
+		<text>Назначьте клавишу для осмотра оружия. Оружие должно находиться у вас в руках. По умолчанию J.</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_modifier">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Модификатор</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_mode">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</text>
+		<text>Режим</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_update_mcm">
-		<text>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ MCM пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ J.</text>
+		<text>Обновите MCM для применения настроек. Клавиша осмотра по умолчанию J.</text>
 	</string>
 
 </string_table>
