@@ -1,57 +1,61 @@
-# GAMMA Fixes and Tweaks
+# GAMMA Mods, Fixes & Tweaks
 
-Small STALKER Anomaly/GAMMA override mods. Each first-level directory under `fixes-and-tweaks/` or `script-fixes/` is installable independently in Mod Organizer 2; the install root should contain that entry's `README.md` when present and `gamedata/` directly.
+Small standalone mods and targeted fixes for STALKER Anomaly/GAMMA.
 
-Downloads: [release page](<https://github.com/elseform/gamma-mods/releases>).
+## Download & install
 
-## Mods
+Download ready-to-install archives from the [release page](https://github.com/elseform/gamma-mods/releases), then add them to Mod Organizer 2. Check the individual mod notes for any load-order or compatibility requirements.
 
-### Flashing Inventory Highlights (FIH)
+## Usage and permissions
+
+You may include any of my mods or tweaks in your own mods / modpacks, provided that you credit me and link back to this repository.
+Although asking permission or letting me know is not required - I would love to know if you decide to use any of my work, so hit me up on Discord's GAMMA server.
+
+This permission covers my original work only. Third-party code and assets keep their original authors' permissions and requirements.
+
+## Standalone mods
+
+### [Flashing Inventory Highlights (FIH)](<mods/Flashing Inventory Highlights - elseform/README.md>)
 
 Adds pulsating flash for inventory / trading grid instead of a static highlight.
 
 Features customizable options:
 
-- Pulse period;
-- Minimum and maximum brightness;
-- Color presets, and optional custom RGB sliders;
+- Five pulse/fade timing presets and optional custom timing.
+- Post-unhover linger that reaches the next pulse crest before fading out.
+- Minimum and maximum brightness.
+- Color presets and optional custom RGB sliders.
 
-Path: `mods/Flashing Inventory Highlights - elseform`
+[Source and notes](<mods/Flashing Inventory Highlights - elseform/README.md>)
 
-### It's Time To Stop (ITTS)
+Special thanks to **kingofthebeats** from the GAMMA Discord server for suggesting lingering highlights.
 
-Tracks real-world playtime and helps you keep sessions from running longer than
-intended.
+### [It's Time To Stop (ITTS)](<mods/Its Time To Stop - elseform/README.md>)
+
+Tracks real-world playtime and helps you keep sessions from running longer than intended.
 
 - Adds total playtime and current-session rows to the PDA ranking tab.
-- Adds an optional real-life HUD clock with configurable placement, fonts, and
-  colors.
-- Sends configurable session-threshold reminders, with optional repeats and a
-  PDA beep.
-- Can progressively change the HUD clock color as a session crosses its warning
-  thresholds.
-- Installs as a standalone MO2 mod with no load-order requirements or
-  dependencies beyond stock GAMMA.
+- Adds an optional real-life HUD clock with configurable placement, fonts, and colors.
+- Sends configurable session-threshold reminders, with optional repeats and a PDA beep.
+- Can progressively change the HUD clock color as a session crosses its warning thresholds.
+- Offers Full, HUD-clock-only, and playtime-statistics-only MO2 installer presets, with no load-order requirements or dependencies beyond stock GAMMA.
 
-Path: `mods/Its Time To Stop - elseform`
+[Source and notes](<mods/Its Time To Stop - elseform/README.md>)
 
-### Inspect Weapon Hotkey
+### [Inspect Weapon Hotkey](<mods/Inspect Weapon Hotkey - elseform/README.md>)
 
-Adds a configurable hotkey that plays the current weapon's existing inspect
-animation on demand.
+Adds a configurable hotkey that plays the current weapon's existing inspect animation on demand.
 
-- Uses each weapon's own bore animation and sound, including grenade-launcher
-  variants.
-- Only starts while the weapon is idle, avoiding reload, firing, and weapon-swap
-  interruptions.
-- Provides MCM settings for enable state, key, modifier, and single-press or
-  double-tap activation.
-- Includes English and Russian localization and falls back to `J` when MCM is
-  unavailable.
+- Uses each weapon's own bore animation and sound, including grenade-launcher variants.
+- Only starts while the weapon is idle, avoiding reload, firing, and weapon-swap interruptions.
+- Provides MCM settings for enable state, key, modifier, and single-press or double-tap activation.
+- Includes English and Russian localization and falls back to `J` when MCM is unavailable.
 
-Path: `mods/Inspect Weapon Hotkey - elseform`
+[Source and notes](<mods/Inspect Weapon Hotkey - elseform/README.md>)
 
-### SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix
+## Fixes
+
+### [D3DMetal Missing Reflex Reticles and Scopes Fix](<fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix/README.md>)
 
 Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
 
@@ -62,9 +66,9 @@ Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
 - Load after 3DSS, Boomsticks & Sharpsticks, Parallax Reflex Sights, and any other optic shader override.
 - Clear `appdata/shaders_cache/` after installing.
 
-Path: `fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix`
+[Source and notes](<fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix/README.md>)
 
-### SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly
+### [G.A.M.M.A. Arti Recipes Overhaul — Ammo Autolooter Crash Fix](<fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly/README.md>)
 
 Script override for `G.A.M.M.A. Arti Recipes Overhaul`.
 
@@ -72,9 +76,9 @@ Script override for `G.A.M.M.A. Arti Recipes Overhaul`.
 - Guards empty ammo lists, missing parts sections, missing parts lists, and empty parsed parts lists before consuming ammo or degrading tools.
 - Load after `G.A.M.M.A. Arti Recipes Overhaul`.
 
-Path: `fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly`
+[Source and notes](<fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly/README.md>)
 
-### SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself
+### [Kute's Free Zoom Rewrite — FOV Changes by Itself Fix](<fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself/README.md>)
 
 Script override for `Kute's Free Zoom Rewrite`.
 
@@ -82,11 +86,11 @@ Script override for `Kute's Free Zoom Rewrite`.
 - Reads persisted MCM option values first, falling back to live console values only when saved options are unavailable.
 - Load after `Kute's Free Zoom Rewrite`.
 
-Path: `fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself`
+[Source and notes](<fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself/README.md>)
 
 ## Tweaks
 
-### CONFIG TWEAK - No Grain Rads Effect
+### [No Grain Rads Effect](<fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect/README.md>)
 
 Config override that disables the radiation grain postprocess without changing radiation gameplay.
 
@@ -94,9 +98,9 @@ Config override that disables the radiation grain postprocess without changing r
 - Keeps radiation zone strengths, attenuation, hit type, and child zone definitions unchanged.
 - Load after mods that edit `gamedata/configs/zones/zone_field_radioactive.ltx`.
 
-Path: `fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect`
+[Source and notes](<fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect/README.md>)
 
-### SCRIPT TWEAK - Silent First-pickup weapon inspection
+### [Silent First-pickup Weapon Inspection](<fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection/README.md>)
 
 Script override for first-pickup weapon inspection.
 
@@ -104,13 +108,11 @@ Script override for first-pickup weapon inspection.
 - Keeps the inspection animations and first-pickup tracking behavior.
 - Includes a VArefined companion override; remove `grok_doom_weapons_inspect_varefined.script` if VArefined is not installed.
 
-Path: `fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection`
+[Source and notes](<fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection/README.md>)
 
 ## Repository layout
 
-- `fixes-and-tweaks/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files.
-- `fixes-and-tweaks/<Entry Name>/gamedata/...`: exact in-game override paths.
-- `script-fixes/<Entry Name>/README.md`: install notes, load-order notes, caveats, and changed files for promoted script fixes.
-- `script-fixes/<Entry Name>/gamedata/...`: exact in-game override paths for promoted script fixes.
-- `mods/<Entry Name>/README.md`: install notes and caveats for standalone mods (new functionality rather than fixes or tweaks).
-- `mods/<Entry Name>/gamedata/...`: in-game paths for standalone mods; files are new, not overrides.
+- `mods/`: standalone elseform-authored mods.
+- `fixes-and-tweaks/`: targeted fixes and optional behavior tweaks.
+- `script-fixes-tweaks/`: promoted script fixes and tweaks when applicable.
+- Each entry keeps its install notes and original `gamedata/` paths inside its own folder.
