@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>Flashing Inventory Highlights - elseform</Name>
+  <Author>elseform</Author>
+  <Version>1.1.0</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases</Website>
+  <Description>Configurable pulsating and post-unhover inventory highlights.</Description>
+  <Groups>
+    <element>Utilities</element>
+  </Groups>
+</fomod>

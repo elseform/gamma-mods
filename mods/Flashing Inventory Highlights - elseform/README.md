@@ -18,7 +18,8 @@ In MCM, the mod appears as the purple `Flashing Item Highlights` entry.
 
 ## Install & Load order
 
-Install as any other MO2 mod, drop the archive onto MO2 window.
+Drop the archive onto the MO2 window and use the one-step installer. FIH has no
+component choices; the installer page is a preview of the complete package.
 
 ## Compatibility
 

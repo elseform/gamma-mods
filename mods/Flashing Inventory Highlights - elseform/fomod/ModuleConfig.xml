@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Flashing Inventory Highlights</moduleName>
+  <moduleImage path="fomod\FIH11.png" />
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install FIH">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Flashing Inventory Highlights">
+              <description>Installs the complete FIH package with pulse, linger, timing, brightness, and color controls.</description>
+              <image path="fomod\FIH11.png" />
+              <files>
+                <folder source="gamedata" destination="gamedata" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>
