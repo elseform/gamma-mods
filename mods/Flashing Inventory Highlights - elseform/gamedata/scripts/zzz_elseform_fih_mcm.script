@@ -1,0 +1,500 @@
+--[[
+FIH: Flashing Inventory Highlights
+
+Makes the related items inventory highlight pulse instead of staying static,
+so compatible attachments / upgrade tools are easier to spot when hovering a weapon.
+
+Author: elseform, 2026
+--]]
+
+local band, brshift = bit.band, bit.rshift
+local floor, sin, min = math.floor, math.sin, math.min
+local PI2 = math.pi * 2
+
+-- Localize globals used on the per-frame path (skips repeated _G hash lookups)
+local next, pairs = next, pairs
+local time_global, GetARGB = time_global, GetARGB
+
+-- Repaint throttle: highlight alpha is rewritten at most every PAINT_MS
+-- (~30 Hz), which is visually indistinguishable for a slow sine pulse but
+-- caps the per-cell engine calls at high framerates.
+local PAINT_MS = 33
+
+-- MCM storage namespace. Version 1.1.0 replaces the original generic
+-- `flash_hl/*` paths with author-scoped `elseform_fih/*` paths.
+local MCM_ROOT = "elseform_fih"
+local LEGACY_MCM_ROOT = "flash_hl"
+
+-- Highlight color ids that should flash (see clr_list_hl in utils_ui.script)
+local FLASH_CLR_IDS = {
+	["blue"] = true, -- related items: attachments for hovered weapon, upgrade tools, etc.
+}
+
+-- Defaults (used when MCM is absent; percentages of the base highlight alpha)
+local DEF = {
+	enabled = true,
+	linger_enabled = true,
+	linger_duration = 1.0, -- seconds after genuine unhover
+	period = 1.2, -- seconds per full pulse
+	timing_preset = "balanced",
+	use_custom_timing = false,
+	min_bright = 10, -- %
+	max_bright = 250, -- % (base "blue" alpha is only 40/255, so >100% is desirable)
+	use_custom_clr = false,
+	clr_preset = "orange",
+	clr_r = 255,
+	clr_g = 160,
+	clr_b = 40,
+}
+
+-- Pulse period and post-crest fade duration, in seconds.
+local TIMING_PRESETS = {
+	snappy = { 0.8, 0.5 },
+	responsive = { 1.0, 0.7 },
+	balanced = { 1.2, 1.0 },
+	calm = { 1.5, 1.0 },
+	slow = { 1.8, 1.4 },
+}
+
+-- Color presets for the MCM dropdown, {alpha, red, green, blue}. Alpha 40
+-- matches the original highlight strength; the brightness settings scale it further.
+local CLR_PRESETS = {
+	blue = { 40, 100, 200, 255 },
+	white = { 40, 255, 255, 255 },
+	red = { 40, 255, 60, 60 },
+	orange = { 40, 255, 160, 40 },
+	yellow = { 40, 255, 230, 60 },
+	green = { 40, 80, 255, 120 },
+	cyan = { 40, 60, 230, 230 },
+	purple = { 40, 190, 90, 255 },
+}
+
+-- Weak keys let discarded inventory cells disappear without explicit teardown.
+-- Active entries only carry `base`; clear/crest/fade fields exist briefly after unhover.
+local tracked = setmetatable({}, { __mode = "k" })
+local dirty = false -- new cell tracked this frame: paint immediately, bypass throttle
+local last_paint = 0
+local inventory_updating = false
+local chained_highlight
+local pulse_epoch = 0
+local highlight_batch_epoch
+
+local cfg = {
+	enabled = DEF.enabled,
+	linger_enabled = DEF.linger_enabled,
+	linger_ms = DEF.linger_duration * 1000,
+	period = DEF.period,
+	custom_timing = DEF.use_custom_timing,
+	min_b = DEF.min_bright / 100,
+	max_b = DEF.max_bright / 100,
+	custom = DEF.use_custom_clr,
+	r = DEF.clr_r,
+	g = DEF.clr_g,
+	b = DEF.clr_b,
+	use_clr = true,
+	omega = PI2 / (DEF.period * 1000), -- precomputed sine frequency
+}
+local cfg_tg = 0
+
+local MCM_OPTION_TYPES = {
+	enabled = 1,
+	period = 2,
+	min_bright = 2,
+	max_bright = 2,
+	use_custom_clr = 1,
+	clr_preset = 0,
+	clr_r = 2,
+	clr_g = 2,
+	clr_b = 2,
+}
+
+local function migrate_legacy_options()
+	local config = axr_main and axr_main.config
+	if not config then
+		return
+	end
+
+	local changed = false
+	local migrated_period = false
+	for id, value_type in pairs(MCM_OPTION_TYPES) do
+		local old_path = LEGACY_MCM_ROOT .. "/" .. id
+		if config:line_exist("mcm", old_path) then
+			local new_path = MCM_ROOT .. "/" .. id
+			if not config:line_exist("mcm", new_path) then
+				local value = config:r_value("mcm", old_path, value_type)
+				if value ~= nil then
+					config:w_value("mcm", new_path, value)
+				end
+			end
+			config:remove_line("mcm", old_path)
+			changed = true
+			migrated_period = migrated_period or id == "period"
+		end
+	end
+
+	if migrated_period then
+		-- A released custom period must remain authoritative even if MCM wrote
+		-- the new default toggle before the migration callback ran.
+		config:w_value("mcm", MCM_ROOT .. "/use_custom_timing", true)
+	end
+
+	if changed then
+		config:save()
+	end
+end
+
+local function refresh_settings(tg)
+	if tg < cfg_tg then
+		return
+	end
+	cfg_tg = tg + 500
+
+	if ui_mcm and ui_mcm.get then
+		local enabled = ui_mcm.get(MCM_ROOT .. "/enabled")
+		local linger_enabled = ui_mcm.get(MCM_ROOT .. "/linger_enabled")
+		cfg.enabled = enabled == nil and DEF.enabled or enabled
+		cfg.linger_enabled = linger_enabled == nil and DEF.linger_enabled or linger_enabled
+		cfg.custom_timing = ui_mcm.get(MCM_ROOT .. "/use_custom_timing") or false
+		if cfg.custom_timing then
+			cfg.period = ui_mcm.get(MCM_ROOT .. "/period") or DEF.period
+			cfg.linger_ms = (ui_mcm.get(MCM_ROOT .. "/linger_duration") or DEF.linger_duration) * 1000
+		else
+			local timing = TIMING_PRESETS[ui_mcm.get(MCM_ROOT .. "/timing_preset") or DEF.timing_preset]
+				or TIMING_PRESETS[DEF.timing_preset]
+			cfg.period = timing[1]
+			cfg.linger_ms = timing[2] * 1000
+		end
+		cfg.min_b = (ui_mcm.get(MCM_ROOT .. "/min_bright") or DEF.min_bright) / 100
+		cfg.max_b = (ui_mcm.get(MCM_ROOT .. "/max_bright") or DEF.max_bright) / 100
+
+		-- Color source: "Customize color" ON -> RGB sliders; OFF -> preset dropdown.
+		cfg.custom = ui_mcm.get(MCM_ROOT .. "/use_custom_clr")
+		if cfg.custom then
+			cfg.a = nil
+			cfg.r = ui_mcm.get(MCM_ROOT .. "/clr_r") or DEF.clr_r
+			cfg.g = ui_mcm.get(MCM_ROOT .. "/clr_g") or DEF.clr_g
+			cfg.b = ui_mcm.get(MCM_ROOT .. "/clr_b") or DEF.clr_b
+			cfg.use_clr = true
+		else
+			local p = CLR_PRESETS[ui_mcm.get(MCM_ROOT .. "/clr_preset") or DEF.clr_preset]
+				or CLR_PRESETS[DEF.clr_preset]
+			cfg.a, cfg.r, cfg.g, cfg.b = p[1], p[2], p[3], p[4]
+			cfg.use_clr = true
+		end
+		cfg.omega = PI2 / ((cfg.period > 0 and cfg.period or DEF.period) * 1000)
+	end
+end
+
+local function set_alpha(clr, a)
+	return GetARGB(a, band(brshift(clr, 16), 255), band(brshift(clr, 8), 255), band(clr, 255))
+end
+
+local function pulse_color(data, factor)
+	local base_a = band(brshift(data.base, 24), 255)
+	if cfg.use_clr then
+		-- Presets carry their own alpha; custom RGB keeps the sampled strength.
+		local a = min(255, floor((cfg.a or base_a) * factor))
+		return GetARGB(a, cfg.r, cfg.g, cfg.b)
+	end
+	return set_alpha(data.base, min(255, floor(base_a * factor)))
+end
+
+local function next_pulse_crest(tg)
+	local period_ms = (cfg.period > 0 and cfg.period or DEF.period) * 1000
+	local delay = period_ms * 0.25 - ((tg - pulse_epoch) % period_ms)
+	if delay < 0 then
+		delay = delay + period_ms
+	end
+	return tg + delay
+end
+
+local function finish_linger(cell)
+	if chained_highlight then
+		-- Let persistent-highlight wrappers restore their own color instead of
+		-- bypassing the chain with hl:Show(false).
+		chained_highlight(cell, false)
+	end
+	tracked[cell] = nil
+end
+
+local function restore_all()
+	for cell, data in pairs(tracked) do
+		if data.linger_crest then
+			finish_linger(cell)
+		elseif data.base and cell.hl and cell.hl:IsShown() then
+			cell.hl:SetTextureColor(data.base)
+			tracked[cell] = nil
+		else
+			tracked[cell] = nil
+		end
+	end
+end
+
+local function resolve_pending_clears(has_focus, tg)
+	refresh_settings(tg)
+
+	for cell, data in pairs(tracked) do
+		if data.pending then
+			data.pending = nil
+
+			if has_focus or (not cfg.enabled) or (not cfg.linger_enabled) or cfg.linger_ms <= 0 then
+				tracked[cell] = nil
+			elseif not data.linger_crest then
+				-- Keep the synchronized pulse alive through its next bright crest.
+				-- The configured duration is the fade that begins at that crest.
+				data.linger_crest = next_pulse_crest(tg)
+			end
+
+			data.pending_clr = nil
+			if tracked[cell]
+				and data.linger_crest
+				and ((not data.linger_end) or tg < data.linger_end)
+				and cell.hl
+			then
+				-- UnHighlight_All already ran through the normal chain. Re-show only
+				-- the related-item cells that are now finishing their exit animation.
+				cell.hl:Show(true)
+				dirty = true
+			elseif tracked[cell] then
+				finish_linger(cell)
+			end
+		end
+	end
+end
+
+local function pulse()
+	-- Fast path: nothing is lit — one next() call and out. This is the state
+	-- for the vast majority of frames the inventory is open.
+	if next(tracked) == nil then
+		return
+	end
+
+	local tg = time_global()
+	refresh_settings(tg)
+
+	if not cfg.enabled then
+		restore_all()
+		return
+	end
+
+	-- Throttle repaints; a fresh highlight (dirty) paints immediately
+	if (not dirty) and (tg - last_paint < PAINT_MS) then
+		return
+	end
+	last_paint = tg
+	dirty = false
+
+	-- Each focused set begins halfway up the rising edge. Related cells remain
+	-- synchronized, but a quick touch no longer inherits an arbitrary world phase.
+	local phase = 0.5 + 0.5 * sin((tg - pulse_epoch) * cfg.omega)
+	local factor = cfg.min_b + (cfg.max_b - cfg.min_b) * phase
+
+	for cell, data in pairs(tracked) do
+		local hl = cell.hl
+		if hl and hl:IsShown() then
+			if not data.base then
+				-- Sample after ui_inventory/other mods applied their recolors.
+				data.base = data.pending_clr or hl:GetTextureColor()
+			end
+
+			if data.linger_crest
+				and ((not cfg.linger_enabled) or cfg.linger_ms <= 0)
+			then
+				finish_linger(cell)
+			elseif data.linger_crest and tg >= data.linger_crest then
+				if not data.linger_end then
+					data.linger_start = data.linger_crest
+					data.linger_end = data.linger_crest + cfg.linger_ms
+					data.linger_clr = pulse_color(data, cfg.max_b)
+				end
+
+				if tg >= data.linger_end then
+					finish_linger(cell)
+				else
+					local duration = data.linger_end - data.linger_start
+					local remaining = duration > 0 and (data.linger_end - tg) / duration or 0
+					local linger_a = band(brshift(data.linger_clr, 24), 255)
+					hl:SetTextureColor(set_alpha(data.linger_clr, floor(linger_a * remaining)))
+				end
+			else
+				hl:SetTextureColor(pulse_color(data, factor))
+			end
+		else
+			tracked[cell] = nil
+		end
+	end
+end
+
+local patched = false
+
+function on_game_start()
+	migrate_legacy_options()
+
+	if patched then
+		return
+	end
+	patched = true
+
+	-- Chain whatever Highlight is current (vanilla / rax_persistent_highlight / others)
+	chained_highlight = utils_ui.UICellItem.Highlight
+	utils_ui.UICellItem.Highlight = function(self, state, clr_id, main_clr)
+		local t = tracked[self]
+		if (not state) and t and inventory_updating then
+			if (not t.linger_crest) and self.hl then
+				t.pending_clr = self.hl:GetTextureColor()
+			end
+			chained_highlight(self, state, clr_id, main_clr)
+			t.pending = true
+			return
+		end
+
+		chained_highlight(self, state, clr_id, main_clr)
+
+		if state and clr_id and FLASH_CLR_IDS[clr_id] and self.hl and self.hl:IsShown() then
+			if (not t) or t.pending or t.linger_crest then
+				if inventory_updating then
+					highlight_batch_epoch = highlight_batch_epoch or time_global()
+					pulse_epoch = highlight_batch_epoch
+				else
+					pulse_epoch = time_global()
+				end
+			end
+
+			if t then
+				t.base = false -- reuse the entry table, no allocation on re-highlight
+				t.pending = nil
+				t.pending_clr = nil
+				t.linger_crest = nil
+				t.linger_start = nil
+				t.linger_end = nil
+				t.linger_clr = nil
+			else
+				tracked[self] = { base = false }
+			end
+			dirty = true
+		elseif t then
+			tracked[self] = nil
+		end
+	end
+
+	-- Drive the pulse from the inventory GUI frame update.
+	-- Also fixes a vanilla hover bug: when the cursor leaves a cell
+	-- container window entirely, On_CC_Hover doesn't fire (it's gated by
+	-- IsCursorOverWindow), so UIInventory.hover.idx keeps pointing at the old
+	-- cell while UnHighlight_All() wipes the highlights every frame. Re-hovering
+	-- the SAME item then skips the ActorMenu_on_item_focus_receive callback
+	-- (prev_idx == idx) and itms_manager never re-applies the related-item
+	-- highlights. We instead reset the hover state whenever no cell is focused,
+	-- mirroring what On_CC_Hover(bag, false) would have done.
+	local base_update = ui_inventory.UIInventory.Update
+	ui_inventory.UIInventory.Update = function(self)
+		highlight_batch_epoch = nil
+		inventory_updating = true
+		base_update(self)
+		inventory_updating = false
+		highlight_batch_epoch = nil
+
+		if (not self.found_cell) and self.hover and self.hover.idx then
+			local cc = self.hover.bag and self.CC[self.hover.bag]
+			local obj = cc and cc.GetObj and cc:GetObj(self.hover.idx)
+			self.hover.idx = false
+			if obj then
+				SendScriptCallback("ActorMenu_on_item_focus_lost", obj)
+			end
+		end
+
+		resolve_pending_clears(self.found_cell and true or false, time_global())
+		pulse()
+	end
+
+	-- Fixes a vanilla stale-tooltip bug: in UICellContainer:Update, hovering an
+	-- EMPTY manual cell (equipment/belt/quick slots) returns "found" but neither
+	-- shows nor hides item_info, so the previous item's description lingers
+	-- until another item is hovered. Close the gap by hiding it explicitly.
+	local base_cc_update = utils_ui.UICellContainer.Update
+	utils_ui.UICellContainer.Update = function(self, item_info, no_info, hide)
+		local found = base_cc_update(self, item_info, no_info, hide)
+
+		if found and item_info and self.hover and self.hover.idx then
+			local ci = self.cell[self.hover.idx]
+			if ci and ci.manual and (not ci:IsShown()) then
+				item_info:Update()
+			end
+		end
+
+		return found
+	end
+end
+
+-- ===== MCM =====
+
+function on_mcm_load()
+	local op = {
+		id = MCM_ROOT,
+		sh = true,
+		gr = {
+			{
+				id = "title",
+				type = "slide",
+				link = "ui_options_slider_player",
+				text = "ui_mcm_elseform_fih_title",
+				size = { 512, 50 },
+				spacing = 20,
+			},
+			{ id = "enabled", type = "check", val = 1, def = DEF.enabled },
+			{ id = "linger_enabled", type = "check", val = 1, def = DEF.linger_enabled },
+			{ id = "divider_3", type = "line" },
+			{
+				id = "timing_preset",
+				type = "list",
+				val = 0,
+				def = DEF.timing_preset,
+				content = {
+					{ "snappy", "fih_timing_snappy" },
+					{ "responsive", "fih_timing_responsive" },
+					{ "balanced", "fih_timing_balanced" },
+					{ "calm", "fih_timing_calm" },
+					{ "slow", "fih_timing_slow" },
+				},
+			},
+			{
+				id = "clr_preset",
+				type = "list",
+				val = 0,
+				def = DEF.clr_preset,
+				content = {
+					{ "orange", "fih_clr_orange" },
+					{ "blue", "fih_clr_blue" },
+					{ "white", "fih_clr_white" },
+					{ "red", "fih_clr_red" },
+					{ "yellow", "fih_clr_yellow" },
+					{ "green", "fih_clr_green" },
+					{ "cyan", "fih_clr_cyan" },
+					{ "purple", "fih_clr_purple" },
+				},
+			},
+			{ id = "min_bright", type = "track", val = 2, min = 0, max = 100, step = 5, def = DEF.min_bright },
+			{ id = "max_bright", type = "track", val = 2, min = 100, max = 400, step = 10, def = DEF.max_bright },
+			{ id = "divider_2", type = "line" },
+			{ id = "use_custom_timing", type = "check", val = 1, def = DEF.use_custom_timing },
+			{ id = "period", type = "track", val = 2, min = 0.4, max = 3.0, step = 0.1, def = DEF.period },
+			{
+				id = "linger_duration",
+				type = "track",
+				val = 2,
+				min = 0.0,
+				max = 3.0,
+				step = 0.1,
+				def = DEF.linger_duration,
+			},
+			{ id = "divider", type = "line" },
+			{ id = "use_custom_clr", type = "check", val = 1, def = DEF.use_custom_clr },
+		},
+	}
+
+	op.gr[#op.gr + 1] = { id = "clr_r", type = "track", val = 2, min = 0, max = 255, step = 5, def = DEF.clr_r }
+	op.gr[#op.gr + 1] = { id = "clr_g", type = "track", val = 2, min = 0, max = 255, step = 5, def = DEF.clr_g }
+	op.gr[#op.gr + 1] = { id = "clr_b", type = "track", val = 2, min = 0, max = 255, step = 5, def = DEF.clr_b }
+
+	return op
+end

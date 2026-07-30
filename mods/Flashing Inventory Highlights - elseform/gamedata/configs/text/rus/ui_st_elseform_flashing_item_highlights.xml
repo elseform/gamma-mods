@@ -1,45 +1,84 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
-	<string id="ui_mcm_menu_flash_hl">
+	<string id="ui_mcm_menu_elseform_fih">
 		<text>%c[255,190,90,255]Flashing Item Highlights</text>
 	</string>
-	<string id="ui_mcm_flash_hl_title">
+	<string id="ui_mcm_elseform_fih_title">
 		<text>Мигающая подсветка инвентаря (FIH)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_enabled">
-		<text>Включить мигание</text>
+	<string id="ui_mcm_elseform_fih_enabled">
+		<text>Включить пульсирующую подсветку</text>
 	</string>
-	<string id="ui_mcm_flash_hl_enabled_desc">
+	<string id="ui_mcm_elseform_fih_enabled_desc">
 		<text>Подсветка совместимых предметов (прицелы, глушители, инструменты для улучшений) пульсирует вместо статичного свечения.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_period">
+	<string id="ui_mcm_elseform_fih_timing_preset">
+		<text>Профиль времени</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_timing_preset_desc">
+		<text>Задаёт период пульсации и, когда включено сохранение подсветки, длительность затухания.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_custom_timing">
+		<text>Настроить время</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_custom_timing_desc">
+		<text>Использовать ползунки «Период пульсации» и «Длительность затухания» ниже вместо выбранного профиля времени.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_enabled">
+		<text>Сохранять подсветку</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_enabled_desc">
+		<text>После снятия наведения подсветка связанных предметов достигает следующего пика пульсации, затем плавно исчезает.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_duration">
+		<text>Длительность затухания (секунды)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_duration_desc">
+		<text>Время затухания после достижения следующего пика пульсации при включённой настройке времени. Нулевое значение отключает задержку.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_period">
 		<text>Период пульсации (секунды)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_period_desc">
-		<text>Длительность одного полного цикла яркий-тусклый-яркий.</text>
+	<string id="ui_mcm_elseform_fih_period_desc">
+		<text>Длительность одного полного цикла яркий-тусклый-яркий при включённой настройке времени.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_min_bright">
+	<string id="ui_mcm_lst_fih_timing_snappy">
+		<text>Быстрый (0,8 / 0,5 с)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_responsive">
+		<text>Отзывчивый (1,0 / 0,7 с)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_balanced">
+		<text>Сбалансированный (1,2 / 1,0 с)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_calm">
+		<text>Спокойный (1,5 / 1,0 с)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_slow">
+		<text>Медленный (1,8 / 1,4 с)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_min_bright">
 		<text>Минимальная яркость (%)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_min_bright_desc">
+	<string id="ui_mcm_elseform_fih_min_bright_desc">
 		<text>Интенсивность подсветки в тусклой точке пульсации относительно стандартной подсветки.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_max_bright">
+	<string id="ui_mcm_elseform_fih_max_bright">
 		<text>Максимальная яркость (%)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_max_bright_desc">
+	<string id="ui_mcm_elseform_fih_max_bright_desc">
 		<text>Интенсивность подсветки в яркой точке пульсации. Стандартная подсветка едва заметна, поэтому значения выше 100% делают её заметнее.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_use_custom_clr">
+	<string id="ui_mcm_elseform_fih_use_custom_clr">
 		<text>Настроить цвет</text>
 	</string>
-	<string id="ui_mcm_flash_hl_use_custom_clr_desc">
+	<string id="ui_mcm_elseform_fih_use_custom_clr_desc">
 		<text>Использовать ползунки RGB ниже. Если включено, они переопределяют выбранный цвет.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_preset">
+	<string id="ui_mcm_elseform_fih_clr_preset">
 		<text>Цвет</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_preset_desc">
+	<string id="ui_mcm_elseform_fih_clr_preset_desc">
 		<text>Готовые цвета подсветки, используемые, когда «Настроить цвет» выключено. По умолчанию выбран оранжевый.</text>
 	</string>
 	<string id="ui_mcm_lst_fih_clr_blue">
@@ -66,13 +105,13 @@
 	<string id="ui_mcm_lst_fih_clr_purple">
 		<text>Фиолетовый</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_r">
+	<string id="ui_mcm_elseform_fih_clr_r">
 		<text>Красный</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_g">
+	<string id="ui_mcm_elseform_fih_clr_g">
 		<text>Зелёный</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_b">
+	<string id="ui_mcm_elseform_fih_clr_b">
 		<text>Синий</text>
 	</string>
 </string_table>

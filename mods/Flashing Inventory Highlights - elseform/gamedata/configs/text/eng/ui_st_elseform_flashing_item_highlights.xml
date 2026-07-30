@@ -1,46 +1,85 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
-	<string id="ui_mcm_menu_flash_hl">
+	<string id="ui_mcm_menu_elseform_fih">
 		<text>%c[255,190,90,255]Flashing Item Highlights</text>
 	</string>
-	<string id="ui_mcm_flash_hl_title">
+	<string id="ui_mcm_elseform_fih_title">
 		<text>Flashing Inventory Highlights</text>
 	</string>
-	<string id="ui_mcm_flash_hl_enabled">
-		<text>Enable flashing</text>
+	<string id="ui_mcm_elseform_fih_enabled">
+		<text>Pulse</text>
 	</string>
-	<string id="ui_mcm_flash_hl_enabled_desc">
+	<string id="ui_mcm_elseform_fih_enabled_desc">
 		<text>Pulse the highlight on related items (compatible attachments, upgrade tools) instead of a static glow.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_period">
+	<string id="ui_mcm_elseform_fih_timing_preset">
+		<text>Timing</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_timing_preset_desc">
+		<text>Sets the pulse period and, when Linger is enabled, the fade duration.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_custom_timing">
+		<text>Custom timing</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_custom_timing_desc">
+		<text>Use the Pulse period and Linger duration sliders below instead of the selected Timing preset.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_enabled">
+		<text>Linger</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_enabled_desc">
+		<text>After unhover, let related-item highlights reach the next pulse peak, then fade them out.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_duration">
+		<text>Linger duration (seconds)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_linger_duration_desc">
+		<text>Fade-out time after the next pulse peak when Custom timing is enabled. Set to zero for an immediate clear.</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_period">
 		<text>Pulse period (seconds)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_period_desc">
-		<text>Duration of one full bright-dim-bright cycle.</text>
+	<string id="ui_mcm_elseform_fih_period_desc">
+		<text>Duration of one full bright-dim-bright cycle when Custom timing is enabled.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_min_bright">
+	<string id="ui_mcm_lst_fih_timing_snappy">
+		<text>Snappy (0.8 / 0.5 s)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_responsive">
+		<text>Responsive (1.0 / 0.7 s)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_balanced">
+		<text>Balanced (1.2 / 1.0 s)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_calm">
+		<text>Calm (1.5 / 1.0 s)</text>
+	</string>
+	<string id="ui_mcm_lst_fih_timing_slow">
+		<text>Slow (1.8 / 1.4 s)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_min_bright">
 		<text>Minimum brightness (%)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_min_bright_desc">
+	<string id="ui_mcm_elseform_fih_min_bright_desc">
 		<text>Highlight intensity at the dim point of the pulse, relative to the default highlight.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_max_bright">
+	<string id="ui_mcm_elseform_fih_max_bright">
 		<text>Maximum brightness (%)</text>
 	</string>
-	<string id="ui_mcm_flash_hl_max_bright_desc">
+	<string id="ui_mcm_elseform_fih_max_bright_desc">
 		<text>Highlight intensity at the bright point of the pulse.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_use_custom_clr">
-		<text>Customize color</text>
+	<string id="ui_mcm_elseform_fih_use_custom_clr">
+		<text>Custom color</text>
 	</string>
-	<string id="ui_mcm_flash_hl_use_custom_clr_desc">
+	<string id="ui_mcm_elseform_fih_use_custom_clr_desc">
 		<text>Use the RGB sliders below. When enabled, they override the Color preset selection.</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_preset">
-		<text>Color preset</text>
+	<string id="ui_mcm_elseform_fih_clr_preset">
+		<text>Color</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_preset_desc">
-		<text>Ready-made highlight colors used when Customize color is off. Orange is selected by default.</text>
+	<string id="ui_mcm_elseform_fih_clr_preset_desc">
+		<text>Ready-made highlight colors used when Custom color is off.</text>
 	</string>
 	<string id="ui_mcm_lst_fih_clr_blue">
 		<text>Blue</text>
@@ -66,13 +105,13 @@
 	<string id="ui_mcm_lst_fih_clr_purple">
 		<text>Purple</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_r">
+	<string id="ui_mcm_elseform_fih_clr_r">
 		<text>Red</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_g">
+	<string id="ui_mcm_elseform_fih_clr_g">
 		<text>Green</text>
 	</string>
-	<string id="ui_mcm_flash_hl_clr_b">
+	<string id="ui_mcm_elseform_fih_clr_b">
 		<text>Blue</text>
 	</string>
 </string_table>
