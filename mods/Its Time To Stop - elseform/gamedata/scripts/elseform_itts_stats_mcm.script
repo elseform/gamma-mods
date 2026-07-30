@@ -1,0 +1,46 @@
+-- It's Time To Stop (ITTS) - playtime statistics MCM page
+
+function on_mcm_load()
+    local shared = elseform_itts_mcm
+    local def = shared.DEF.stats
+    local op = {
+        id = "stats",
+        sh = true,
+        text = "ui_mcm_menu_itts_stats",
+        gr = {
+            shared.title(),
+            {
+                id = "show_total", type = "check", val = 1,
+                def = def.show_total, hint = "itts_stat_show_total",
+            },
+            {
+                id = "show_session", type = "check", val = 1,
+                def = def.show_session, hint = "itts_stat_show_session",
+            },
+            {
+                id = "units", type = "list", val = 0,
+                def = def.units, hint = "itts_stat_units",
+                content = {
+                    { "hm", "itts_units_hm" },
+                    { "h", "itts_units_h" },
+                },
+            },
+            { id = "divider1", type = "line" },
+            {
+                id = "session_count_pause", type = "check", val = 1,
+                def = def.session_count_pause, hint = "itts_stat_session_count_pause",
+            },
+            {
+                id = "session_count_loadings", type = "check", val = 1,
+                def = def.session_count_loadings,
+                hint = "itts_stat_session_count_loadings",
+            },
+            {
+                id = "session_break_min", type = "track", val = 2,
+                min = 5, max = 240, step = 5,
+                def = def.session_break_min, hint = "itts_stat_session_break_min",
+            },
+        },
+    }
+    return op, "elseform_itts"
+end

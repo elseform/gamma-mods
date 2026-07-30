@@ -1,0 +1,85 @@
+--[[
+    It's Time To Stop (ITTS) - session notifications
+    Author: elseform
+
+    Sends threshold-crossing PDA reminders and supplies the optional progressive
+    HUD-clock stage. The statistics module owns the session timer and persists
+    this module's stage beside it so loads cannot repeat an old reminder.
+--]]
+
+local notify_stage = nil
+
+local function cfg(id)
+    return elseform_itts_mcm.get(id)
+end
+
+local function stage_of(ms)
+    local minutes = ms / 60000
+    local bad = cfg("notify_bad") or 180
+    if minutes >= bad then
+        if cfg("notify_repeat") then
+            local interval = cfg("notify_repeat_min") or 15
+            if interval > 0 then
+                return 2 + math.floor((minutes - bad) / interval)
+            end
+        end
+        return 2
+    end
+    if minutes >= (cfg("notify_good") or 120) then return 1 end
+    return 0
+end
+
+local function send_notification(text)
+    local actor = db and db.actor
+    if not actor then return end
+
+    local icon = (news_manager and news_manager.tips_icons
+        and news_manager.tips_icons["default"]) or "ui_inGame2_Poslednie_razrabotki"
+    actor:give_game_news(game.translate_string("ui_mcm_itts_stat_title"),
+        text, icon, 0, 10000)
+    if cfg("notify_sound") and xr_sound and xr_sound.set_sound_play then
+        xr_sound.set_sound_play(AC_ID, "pda_tips")
+    end
+end
+
+function check(session_ms)
+    local stage = stage_of(session_ms)
+    if notify_stage == nil then
+        notify_stage = stage
+        return
+    end
+
+    -- A jump over several stages produces one current reminder, never a burst.
+    if stage > notify_stage and cfg("notify_enabled") then
+        if stage >= 2 then
+            send_notification(game.translate_string("st_elseform_itts_notify_over"))
+        else
+            local left = math.max(
+                math.ceil((cfg("notify_bad") or 180) - session_ms / 60000), 0)
+            send_notification(string.format(
+                game.translate_string("st_elseform_itts_notify_warn"), left))
+        end
+    end
+    notify_stage = stage
+end
+
+function restore_stage(stage)
+    notify_stage = stage
+end
+
+function get_stage_for_store(session_ms)
+    return notify_stage or stage_of(session_ms)
+end
+
+function get_clock_stage(session_ms)
+    if not cfg("clock_progressive") then return nil end
+
+    local minutes = session_ms / 60000
+    if minutes < (cfg("notify_good") or 120) then return "good" end
+    if minutes < (cfg("notify_bad") or 180) then return "mid" end
+    return "bad"
+end
+
+function on_game_start()
+    notify_stage = nil
+end

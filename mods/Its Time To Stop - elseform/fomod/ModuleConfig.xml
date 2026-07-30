@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>It's Time To Stop</moduleName>
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+    <file source="gamedata\configs\text\eng\ui_st_elseform_itts.xml" destination="gamedata\configs\text\eng\ui_st_elseform_itts.xml" />
+    <file source="gamedata\configs\text\rus\ui_st_elseform_itts.xml" destination="gamedata\configs\text\rus\ui_st_elseform_itts.xml" />
+    <file source="gamedata\scripts\elseform_itts.script" destination="gamedata\scripts\elseform_itts.script" />
+    <file source="gamedata\scripts\elseform_itts_mcm.script" destination="gamedata\scripts\elseform_itts_mcm.script" />
+    <file source="gamedata\scripts\modxml_elseform_itts.script" destination="gamedata\scripts\modxml_elseform_itts.script" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Choose ITTS features">
+      <optionalFileGroups order="Explicit">
+        <group name="Installation preset" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Full package">
+              <description>HUD clock, playtime statistics, session notifications, and progressive clock colors.</description>
+              <files>
+                <file source="gamedata\configs\ui\elseform_itts_clock.xml" destination="gamedata\configs\ui\elseform_itts_clock.xml" />
+                <file source="gamedata\scripts\elseform_itts_clock.script" destination="gamedata\scripts\elseform_itts_clock.script" />
+                <file source="gamedata\scripts\elseform_itts_clock_mcm.script" destination="gamedata\scripts\elseform_itts_clock_mcm.script" />
+                <file source="gamedata\scripts\elseform_itts_stats.script" destination="gamedata\scripts\elseform_itts_stats.script" />
+                <file source="gamedata\scripts\elseform_itts_stats_mcm.script" destination="gamedata\scripts\elseform_itts_stats_mcm.script" />
+                <file source="gamedata\scripts\elseform_itts_notify.script" destination="gamedata\scripts\elseform_itts_notify.script" />
+                <file source="gamedata\scripts\elseform_itts_notify_mcm.script" destination="gamedata\scripts\elseform_itts_notify_mcm.script" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="HUD clock only">
+              <description>A pure local-time HUD clock. Does not track sessions, write to saves, or create the sessiontime file.</description>
+              <files>
+                <file source="gamedata\configs\ui\elseform_itts_clock.xml" destination="gamedata\configs\ui\elseform_itts_clock.xml" />
+                <file source="gamedata\scripts\elseform_itts_clock.script" destination="gamedata\scripts\elseform_itts_clock.script" />
+                <file source="gamedata\scripts\elseform_itts_clock_mcm.script" destination="gamedata\scripts\elseform_itts_clock_mcm.script" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="Playtime statistics only">
+              <description>Total and session playtime rows in the PDA. Persists total time in saves and session state in appdata.</description>
+              <files>
+                <file source="gamedata\scripts\elseform_itts_stats.script" destination="gamedata\scripts\elseform_itts_stats.script" />
+                <file source="gamedata\scripts\elseform_itts_stats_mcm.script" destination="gamedata\scripts\elseform_itts_stats_mcm.script" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

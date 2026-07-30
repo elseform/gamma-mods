@@ -1,0 +1,338 @@
+--[[
+    It's Time To Stop (ITTS) - playtime statistics
+    Author: elseform
+
+    Tracks real wall-clock playtime for the current save and sitting, persists
+    both values, and adds their optional rows to the PDA ranking strip. This
+    module is absent from the HUD-clock-only installer preset.
+--]]
+
+local CLAMP_MS = 1000 -- gaps longer than this are "not playing" and dropped
+local KEY = "elseform_itts_ms"
+
+local total_ms = 0
+local session_ms = 0
+local last_tg = nil
+local last_os = nil
+local gap_load = false
+
+local SESSION_FILE = "sessiontime"
+local SESSION_STORE_MS = 10000
+
+local session_restored = false
+local session_next_store = 0
+
+local STAT_IDX = { total = nil, session = nil }
+local orig_get_stat = nil
+
+local function cfg(id)
+    return elseform_itts_mcm.get(id)
+end
+
+local function session_file_path()
+    local fs = getFS()
+    return fs and (fs:update_path("$app_data_root$", "") .. SESSION_FILE)
+end
+
+local function session_store(now, notify)
+    local path = session_file_path()
+    local f = path and io.open(path, "w")
+    if not f then return end
+
+    local stage = notify and notify.get_stage_for_store(session_ms) or 0
+    f:write(string.format("%d %d %d", session_ms, now, stage))
+    f:close()
+end
+
+local function session_restore(now, notify)
+    session_restored = true
+    local path = session_file_path()
+    local f = path and io.open(path, "r")
+    if not f then return end
+
+    local ms, wall, stage = string.match(f:read("*a") or "", "^(%d+) (%d+) (%d+)")
+    f:close()
+    ms, wall, stage = tonumber(ms), tonumber(wall), tonumber(stage)
+    if not (ms and wall and stage) then return end
+
+    local gap = now - wall
+    if gap < 0 or gap > (cfg("session_break_min") or 20) * 60 then
+        return
+    end
+
+    session_ms = ms
+    if notify then notify.restore_stage(stage) end
+
+    -- Loading/menu/relaunch gaps are session-only and remain opt-in.
+    if gap > 0 and cfg("session_count_loadings") then
+        session_ms = session_ms + gap * 1000
+    end
+end
+
+function actor_on_update(tg, now, notify)
+    if not session_restored then
+        session_restore(now, notify)
+    end
+
+    local d = last_tg and (tg - last_tg) or 0
+    if d > 0 and d <= CLAMP_MS then
+        total_ms = total_ms + d
+        session_ms = session_ms + d
+    elseif d > CLAMP_MS then
+        local opt = gap_load and "session_count_loadings" or "session_count_pause"
+        if last_os and cfg(opt) then
+            local wall = now - last_os
+            if wall > 0 then session_ms = session_ms + wall * 1000 end
+        end
+    end
+
+    gap_load = false
+    last_tg = tg
+    last_os = now
+
+    if tg >= session_next_store then
+        session_next_store = tg + SESSION_STORE_MS
+        if notify then notify.check(session_ms) end
+        session_store(now, notify)
+    end
+end
+
+function actor_on_net_destroy(now, notify)
+    gap_load = true
+    session_store(now, notify)
+end
+
+function save_state(m_data)
+    m_data[KEY] = total_ms
+end
+
+function load_state(m_data)
+    total_ms = m_data[KEY] or 0
+    -- The stale timestamps deliberately classify the next oversized delta as
+    -- a loading gap; the clamp still protects the per-save total.
+    gap_load = true
+end
+
+function get_total_ms()
+    return total_ms
+end
+
+function get_session_ms()
+    return session_ms
+end
+
+local function format_time(ms)
+    local total_s = math.floor(ms / 1000)
+    local h = math.floor(total_s / 3600)
+    local m = math.floor((total_s % 3600) / 60)
+    local str_h = game.translate_string("st_elseform_itts_h")
+    local str_m = game.translate_string("st_elseform_itts_m")
+
+    if cfg("units") == "h" then
+        return string.format("%d %s", h, str_h)
+    end
+    if h > 0 then
+        return string.format("%d %s %d %s", h, str_h, m, str_m)
+    end
+    return string.format("%d %s", m, str_m)
+end
+
+local function itts_get_stat(index)
+    local it, is = STAT_IDX.total, STAT_IDX.session
+    if it and index == it then return format_time(total_ms) end
+    if is and index == is then return format_time(session_ms) end
+
+    local shift = 0
+    if it and index > it then shift = shift + 1 end
+    if is and index > is then shift = shift + 1 end
+    return orig_get_stat(index - shift)
+end
+
+function on_game_start()
+    -- New games have no load_state callback; loaded saves restore immediately
+    -- after this reset. Session state intentionally survives save changes.
+    total_ms = 0
+
+    if pda and pda.get_stat and pda.get_stat ~= itts_get_stat then
+        orig_get_stat = pda.get_stat
+        pda.get_stat = itts_get_stat
+    end
+end
+
+-- PDA ranking XML -------------------------------------------------------------
+
+local MARKER = "elseform_itts"
+local ORIG_X = "elseform_itts_orig_x"
+local ORIG_Y = "elseform_itts_orig_y"
+
+local METRICS = {
+    { id = "total", label = "st_elseform_itts_label" },
+    { id = "session", label = "st_elseform_itts_session_label" },
+}
+
+local ROW_Y = 264
+local STRIP_X0 = 45
+local STRIP_W = 720
+local EST_CHAR_W = 7
+local VALUE_GAP = 5
+local STOCK_VAL_EST = 40
+local MIN_GUTTER = 10
+
+local function translated_w(id)
+    local s = game.translate_string(id) or id
+    return #s * EST_CHAR_W
+end
+
+local function time_value_est()
+    local h = game.translate_string("st_elseform_itts_h")
+    local sample
+    if cfg("units") == "h" then
+        sample = "23 " .. h
+    else
+        sample = "5 " .. h .. " 53 " .. game.translate_string("st_elseform_itts_m")
+    end
+    return #sample * EST_CHAR_W
+end
+
+local function stat_label(xml_obj, stat_el)
+    local text_el = xml_obj:query("text", stat_el)[1]
+    return text_el and xml_obj:getText(text_el) or ""
+end
+
+function patch_ranking(xml_obj)
+    local stat_info = xml_obj:query("stat_info")[1]
+    if not stat_info then return end
+
+    local metrics = {}
+    for _, metric in ipairs(METRICS) do
+        if cfg("show_" .. metric.id) then
+            metrics[#metrics + 1] = metric
+        end
+    end
+
+    STAT_IDX.total = nil
+    STAT_IDX.session = nil
+
+    local existing = {}
+    local existing_nodes = {}
+    local stats = xml_obj:query("stat_info > stat")
+    for i, element in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(element)
+        if attr[MARKER] then
+            existing[#existing + 1] = { id = attr[MARKER], index = i - 1 }
+            existing_nodes[#existing_nodes + 1] = element
+        end
+    end
+
+    local current = #existing == #metrics
+    if current then
+        for i, row in ipairs(existing) do
+            if row.id ~= metrics[i].id then
+                current = false
+                break
+            end
+        end
+    end
+
+    if current then
+        for _, row in ipairs(existing) do
+            STAT_IDX[row.id] = row.index
+        end
+        return
+    end
+
+    for _, element in ipairs(existing_nodes) do
+        xml_obj:removeElement(element)
+    end
+
+    stats = xml_obj:query("stat_info > stat")
+    for _, element in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(element)
+        if attr[ORIG_X] and attr[ORIG_Y] then
+            xml_obj:setElementAttr(element, { x = attr[ORIG_X], y = attr[ORIG_Y] })
+        end
+    end
+
+    if #metrics == 0 then return end
+
+    local strip = {}
+    stats = xml_obj:query("stat_info > stat")
+    for _, element in ipairs(stats) do
+        local attr = xml_obj:getElementAttr(element)
+        if tonumber(attr.y) == ROW_Y then
+            if not attr[ORIG_X] or not attr[ORIG_Y] then
+                xml_obj:setElementAttr(element, {
+                    [ORIG_X] = attr.x,
+                    [ORIG_Y] = attr.y,
+                })
+            end
+            strip[#strip + 1] = {
+                el = element,
+                x = tonumber(attr.x) or 0,
+                label = stat_label(xml_obj, element),
+            }
+        end
+    end
+
+    -- Unlocked Articles yields its slot only when it is actually in this row.
+    for i, item in ipairs(strip) do
+        if item.label == "pda_stat_16" then
+            xml_obj:setElementAttr(item.el, { x = -2000, y = -2000 })
+            table.remove(strip, i)
+            break
+        end
+    end
+
+    table.sort(strip, function(a, b) return a.x < b.x end)
+
+    local widths = {}
+    for _, item in ipairs(strip) do
+        widths[#widths + 1] = translated_w(item.label) + VALUE_GAP + STOCK_VAL_EST
+    end
+    local our_val = time_value_est()
+    for _, metric in ipairs(metrics) do
+        widths[#widths + 1] = translated_w(metric.label) + VALUE_GAP + our_val
+    end
+
+    local total = 0
+    for _, width in ipairs(widths) do total = total + width end
+    local gutter = (STRIP_W - total) / (#widths + 1)
+    if gutter < MIN_GUTTER then gutter = MIN_GUTTER end
+
+    local xs = {}
+    local cursor = STRIP_X0 + gutter
+    for i, width in ipairs(widths) do
+        xs[i] = math.floor(cursor + 0.5)
+        cursor = cursor + width + gutter
+    end
+
+    for i, item in ipairs(strip) do
+        xml_obj:setElementAttr(item.el, { x = xs[i] })
+    end
+
+    local strip_font = "letterica16"
+    if strip[1] then
+        local text_el = xml_obj:query("text", strip[1].el)[1]
+        local attr = text_el and xml_obj:getElementAttr(text_el)
+        if attr and attr.font then strip_font = attr.font end
+    end
+
+    for j, metric in ipairs(metrics) do
+        xml_obj:insertFromXMLString(
+            string.format(
+                [[<stat x="%d" y="%d" width="24" height="16" %s="%s"><text align="l" font="%s" r="220" g="220" b="220">%s</text></stat>]],
+                xs[#strip + j], ROW_Y, MARKER, metric.id, strip_font, metric.label
+            ),
+            stat_info,
+            #stat_info.kids + 1
+        )
+    end
+
+    local after = xml_obj:query("stat_info > stat")
+    for i, element in ipairs(after) do
+        local attr = xml_obj:getElementAttr(element)
+        if attr[MARKER] then
+            STAT_IDX[attr[MARKER]] = i - 1
+        end
+    end
+end

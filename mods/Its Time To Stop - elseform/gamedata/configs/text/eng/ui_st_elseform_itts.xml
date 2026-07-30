@@ -19,6 +19,9 @@
 		<text>Play session time exceeded. Touch grass and get some sun, please.</text>
 	</string>
 	<!-- MCM -->
+	<string id="ui_mcm_menu_elseform_itts">
+		<text>%c[255,255,160,40]Its Time To Stop</text>
+	</string>
 	<string id="ui_mcm_menu_itts_stat">
 		<text>%c[255,255,160,40]Its Time To Stop</text>
 	</string>
@@ -77,13 +80,13 @@
 		<text>Show the Session row in the PDA statistics strip. Applied on game restart.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_enabled">
-		<text>Display real-time HUD clock</text>
+		<text>Display Real-time HUD Clock</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_enabled_desc">
 		<text>Show the real local-time clock on the HUD.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_pos">
-		<text>Clock position</text>
+		<text>Position</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_pos_desc">
 		<text>Compass presets follow the active minimap and mirror its stock clock anchor. The below-right presets either move the stock in-game clock to below-left or replace it entirely. Restart required.</text>
@@ -116,19 +119,19 @@
 		<text>Screen: bottom-right</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_off_x">
-		<text>Clock X offset</text>
+		<text>Position X offset</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_off_x_desc">
 		<text>Fine-tune the clock position horizontally.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_off_y">
-		<text>Clock Y offset</text>
+		<text>Position Y offset</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_off_y_desc">
 		<text>Fine-tune the clock position vertically.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_24h">
-		<text>24-hour clock</text>
+		<text>24-hour format</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_24h_desc">
 		<text>Off = 12-hour format with AM/PM.</text>
@@ -137,10 +140,10 @@
 		<text>Blinking separators</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_blink_desc">
-		<text>Softly pulse the ':' separators of the real-life clock once per second. Subtle: they dim, never disappear.</text>
+		<text>Give the ':' separators of the real-life clock a slow, smooth pulse. Subtle: they dim, never disappear.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_font">
-		<text>Clock font</text>
+		<text>Font</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_font_desc">
 		<text>Font used by the real-life HUD clock.</text>
@@ -161,7 +164,7 @@
 		<text>Graffiti 22</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_clr">
-		<text>Clock color</text>
+		<text>Color</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_clr_desc">
 		<text>Color preset, so the real clock is distinguishable from the in-game one at a glance.</text>
@@ -263,7 +266,7 @@
 		<text>Play the PDA beep with the notification.</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_progressive">
-		<text>Progressive color by session length</text>
+		<text>Progressive HUD clock color</text>
 	</string>
 	<string id="ui_mcm_itts_stat_clock_progressive_desc">
 		<text>Change the clock color automatically as your current session crosses the notification thresholds above. Overrides the color preset and custom color.</text>

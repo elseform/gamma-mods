@@ -1,0 +1,66 @@
+-- It's Time To Stop (ITTS) - session notifications MCM page
+
+function on_mcm_load()
+    local shared = elseform_itts_mcm
+    local def = shared.DEF.notify
+    local op = {
+        id = "notify",
+        sh = true,
+        text = "ui_mcm_menu_itts_notify",
+        gr = {
+            shared.title(),
+            {
+                id = "notify_enabled", type = "check", val = 1,
+                def = def.notify_enabled, hint = "itts_stat_notify_enabled",
+            },
+            {
+                id = "notify_good", type = "track", val = 2,
+                min = 0, max = 600, step = 5,
+                def = def.notify_good, hint = "itts_stat_notify_good",
+            },
+            {
+                id = "notify_bad", type = "track", val = 2,
+                min = 0, max = 600, step = 5,
+                def = def.notify_bad, hint = "itts_stat_notify_bad",
+            },
+            { id = "divider1", type = "line" },
+            {
+                id = "clock_progressive", type = "check", val = 1,
+                def = def.clock_progressive, hint = "itts_stat_clock_progressive",
+            },
+            {
+                id = "clock_progressive_clr_good", type = "list", val = 0,
+                def = def.clock_progressive_clr_good,
+                hint = "itts_stat_clock_progressive_clr_good",
+                content = shared.CLR_CONTENT,
+            },
+            {
+                id = "clock_progressive_clr_mid", type = "list", val = 0,
+                def = def.clock_progressive_clr_mid,
+                hint = "itts_stat_clock_progressive_clr_mid",
+                content = shared.CLR_CONTENT,
+            },
+            {
+                id = "clock_progressive_clr_bad", type = "list", val = 0,
+                def = def.clock_progressive_clr_bad,
+                hint = "itts_stat_clock_progressive_clr_bad",
+                content = shared.CLR_CONTENT,
+            },
+            { id = "divider", type = "line" },
+            {
+                id = "notify_sound", type = "check", val = 1,
+                def = def.notify_sound, hint = "itts_stat_notify_sound",
+            },
+            {
+                id = "notify_repeat", type = "check", val = 1,
+                def = def.notify_repeat, hint = "itts_stat_notify_repeat",
+            },
+            {
+                id = "notify_repeat_min", type = "track", val = 2,
+                min = 5, max = 120, step = 5,
+                def = def.notify_repeat_min, hint = "itts_stat_notify_repeat_min",
+            },
+        },
+    }
+    return op, "elseform_itts"
+end

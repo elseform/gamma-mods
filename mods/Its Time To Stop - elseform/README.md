@@ -37,10 +37,12 @@ What counts as playtime:
 
 ## Settings
 
-Everything is in MCM under "Its Time To Stop", on three pages: Real-time
-HUD Clock, Session Notifications, and Playtime Stats.
+Each installed feature has its own MCM page under "Its Time To Stop":
+Real-time HUD Clock, Session Notifications, and Playtime Stats. The Full
+package includes all three pages; the smaller installer presets show only
+their selected feature.
 
-Most options take effect immediately. Two exceptions:
+Most options take effect within about one second. Two exceptions:
 
 - Clock positions that move or replace the stock in-game clock need a game
   restart.
@@ -49,8 +51,21 @@ Most options take effect immediately. Two exceptions:
 
 ## Install
 
-Install like any other MO2 mod: drop the archive onto the MO2 window. No
-load-order requirements, no dependencies beyond stock GAMMA.
+Drop the archive onto the MO2 window and choose one preset:
+
+- **Full package** (recommended): HUD clock, playtime statistics, session
+  notifications, and progressive clock colors.
+- **HUD clock only**: a pure local-time clock. It does not track sessions,
+  write to saves, or create the `sessiontime` file.
+- **Playtime statistics only**: the total and session PDA rows. This preset
+  stores total playtime in saves and session state in `appdata/sessiontime`.
+
+When updating ITTS or changing presets, choose **Replace** in MO2. Do not use
+Merge: MO2 cannot remove scripts belonging to the previous preset. Changing
+presets never deletes existing settings, saved totals, or the `sessiontime`
+file; features that are not installed simply leave that data untouched.
+
+There are no load-order requirements or dependencies beyond stock GAMMA.
 
 ## Compatibility
 
