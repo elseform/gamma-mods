@@ -9,6 +9,7 @@
   weapon swap.
 - Adds an MCM page under `Inspect Weapon Hotkey` with an enable toggle, key bind,
   modifier key, and press / double-tap activation.
+- Colors its top-level MCM list entry blue in every shipped locale.
 - Ships English and Russian localization for its own MCM strings.
 
 ## How It Works
@@ -48,8 +49,8 @@ press on the default key `J`.
 
 ## Not Touched
 
-- No changes to `/Users/elseform/gamma/flat` or to source mods under
-  `/Users/elseform/gamma/g/mods`. This is a self-contained standalone mod.
+- No third-party source mods are edited. This is a self-contained standalone
+  mod.
 
 ## Playtest Targets
 

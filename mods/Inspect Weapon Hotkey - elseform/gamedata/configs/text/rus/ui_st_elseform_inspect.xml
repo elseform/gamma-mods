@@ -2,7 +2,7 @@
 <string_table>
 
 	<string id="ui_mcm_menu_elseform_inspect">
-		<text>Inspect Weapon Hotkey</text>
+		<text>%c[255,77,166,255]Осмотр оружия</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_title">
@@ -10,7 +10,7 @@
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_enabled">
-		<text>Включить</text>
+		<text>Включено</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_keybind">
@@ -18,7 +18,7 @@
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_keybind_desc">
-		<text>Назначьте клавишу для осмотра оружия. Оружие должно находиться у вас в руках. По умолчанию J.</text>
+		<text>Воспроизводит анимацию осмотра оружия, которая показывается при первом извлечении. Работает, только когда оружие находится в состоянии покоя. По умолчанию — J.</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_modifier">
@@ -26,11 +26,11 @@
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_mode">
-		<text>Режим</text>
+		<text>Активация</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_update_mcm">
-		<text>Обновите MCM для применения настроек. Клавиша осмотра по умолчанию J.</text>
+		<text>Обновите MCM, чтобы настроить клавишу осмотра. По умолчанию — J.</text>
 	</string>
 
 </string_table>

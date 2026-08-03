@@ -2,7 +2,7 @@
 <string_table>
 
 	<string id="ui_mcm_menu_elseform_inspect">
-		<text>Inspect Weapon Hotkey</text>
+		<text>%c[255,77,166,255]Inspect Weapon Hotkey</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_title">
