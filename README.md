@@ -53,20 +53,54 @@ Adds a configurable hotkey that plays the current weapon's existing inspect anim
 
 [Source and notes](<mods/Inspect Weapon Hotkey - elseform/README.md>)
 
-## Fixes
+## D3DMetal compatibility
 
-### [D3DMetal Missing Reflex Reticles and Scopes Fix](<fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix/README.md>)
+Shader overrides for running GAMMA through D3DMetal/DXMT on macOS / Apple
+Silicon. Each entry is named for the source mods it was built against and states
+the exact source versions in its own README. Clear `appdata/shaders_cache/`
+after installing or updating any of them.
 
-Compatibility shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
+### [D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics](<d3dmetal-compat/D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics/README.md>)
+
+Built against 3DSS for GAMMA 4.17, Boomsticks and Sharpsticks 1.5.1, and Mark
+Switch (GAMMA ver.).
 
 - Restores red-dot and holographic sight reticles that can disappear under D3DMetal.
 - Fixes scope lens-edge artifacts caused by NaN-producing sphere projection math.
 - Fixes night-vision scope tint initialization for strict HLSL compilers.
 - Fixes thermal scope garbage or black output caused by uninitialized cold-pixel color data.
-- Load after 3DSS, Boomsticks & Sharpsticks, Parallax Reflex Sights, and any other optic shader override.
-- Clear `appdata/shaders_cache/` after installing.
+- Writes all four bound render targets in the scope depth-restore pass.
+- Bounds the mark-grid loop so garbage input cannot hang the GPU.
+- Load after 3DSS, Boomsticks & Sharpsticks, Mark Switch, and any other optic shader override.
 
-[Source and notes](<fixes-and-tweaks/SHADER FIX - D3DMetal Missing Reflex Reticles and Scopes Fix/README.md>)
+Supersedes the former `D3DMetal Missing Reflex Reticles and Scopes Fix`
+(v1.2.0). Reinstall in its place; there is no migration step.
+
+[Source and notes](<d3dmetal-compat/D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics/README.md>)
+
+### [D3DMetal Fix - Glossy Puddles - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Glossy Puddles - Metal Loop Guards/README.md>)
+
+Built against Glossy Puddles 1.4.
+
+- Caps the terrain parallax-occlusion loops that can otherwise spin forever on degenerate input.
+- macOS has no TDR-style GPU recovery, so an unbounded shader loop takes down the GPU until restart.
+- Preserves the Glossy Puddles reflection-strength control exactly.
+- Load after Glossy Puddles.
+
+[Source and notes](<d3dmetal-compat/D3DMetal Fix - Glossy Puddles - Metal Loop Guards/README.md>)
+
+### [D3DMetal Fix - Screen Space Shaders - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Screen Space Shaders - Metal Loop Guards/README.md>)
+
+Built against Screen Space Shaders 23.
+
+- Caps the two parallax-occlusion loops in `sload.h` that can otherwise spin forever on degenerate input.
+- macOS has no TDR-style GPU recovery, so an unbounded shader loop takes down the GPU until restart.
+- Ships the upstream shader unchanged apart from the guards.
+- Load after Screen Space Shaders.
+
+[Source and notes](<d3dmetal-compat/D3DMetal Fix - Screen Space Shaders - Metal Loop Guards/README.md>)
+
+## Fixes
 
 ### [G.A.M.M.A. Arti Recipes Overhaul — Ammo Autolooter Crash Fix](<fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly/README.md>)
 
@@ -113,6 +147,7 @@ Script override for first-pickup weapon inspection.
 ## Repository layout
 
 - `mods/`: standalone elseform-authored mods.
+- `d3dmetal-compat/`: shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
 - `fixes-and-tweaks/`: targeted fixes and optional behavior tweaks.
 - `script-fixes-tweaks/`: promoted script fixes and tweaks when applicable.
 - Each entry keeps its install notes and original `gamedata/` paths inside its own folder.
