@@ -16,25 +16,25 @@
 		<text>Профиль времени</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_timing_preset_desc">
-		<text>Задаёт период пульсации и, когда включено сохранение подсветки, длительность затухания.</text>
+		<text>Задаёт период пульсации и, когда включено сохранение подсветки, общую длительность послесвечения: усиление, удержание и затухание.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_timing">
 		<text>Настроить время</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_timing_desc">
-		<text>Использовать ползунки «Период пульсации» и «Длительность затухания» ниже вместо выбранного профиля времени.</text>
+		<text>Использовать ползунки «Период пульсации» и «Длительность послесвечения» ниже вместо выбранного профиля времени.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_linger_enabled">
 		<text>Сохранять подсветку</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_linger_enabled_desc">
-		<text>После снятия наведения подсветка связанных предметов достигает следующего пика пульсации, затем плавно исчезает.</text>
+		<text>После снятия наведения подсветка связанных предметов быстро достигает максимальной яркости, ненадолго задерживается и затем исчезает за предсказуемое время.</text>
 	</string>
-	<string id="ui_mcm_elseform_fih_linger_duration">
-		<text>Длительность затухания (секунды)</text>
+	<string id="ui_mcm_elseform_fih_exit_duration">
+		<text>Длительность послесвечения (секунды)</text>
 	</string>
-	<string id="ui_mcm_elseform_fih_linger_duration_desc">
-		<text>Время затухания после достижения следующего пика пульсации при включённой настройке времени. Нулевое значение отключает задержку.</text>
+	<string id="ui_mcm_elseform_fih_exit_duration_desc">
+		<text>Общее время усиления, удержания максимальной яркости и затухания при включённой настройке времени. Нулевое значение сразу убирает подсветку.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_period">
 		<text>Период пульсации (секунды)</text>
@@ -43,19 +43,19 @@
 		<text>Длительность одного полного цикла яркий-тусклый-яркий при включённой настройке времени.</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_snappy">
-		<text>Быстрый (0,8 / 0,5 с)</text>
+		<text>Быстрый (0,8 / 0,4 с)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_responsive">
-		<text>Отзывчивый (1,0 / 0,7 с)</text>
+		<text>Отзывчивый (1,0 / 0,6 с)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_balanced">
-		<text>Сбалансированный (1,2 / 1,0 с)</text>
+		<text>Сбалансированный (1,2 / 0,8 с)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_calm">
 		<text>Спокойный (1,5 / 1,0 с)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_slow">
-		<text>Медленный (1,8 / 1,4 с)</text>
+		<text>Медленный (1,8 / 1,2 с)</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_min_bright">
 		<text>Минимальная яркость (%)</text>

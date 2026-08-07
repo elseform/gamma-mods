@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <fomod>
-  <Name>Flashing Inventory Highlights - elseform</Name>
+  <Name>Inspect Weapon Hotkey - elseform</Name>
   <Author>elseform</Author>
-  <Version>1.1.1</Version>
+  <Version>1.0.1</Version>
   <Website>https://github.com/elseform/gamma-mods/releases</Website>
-  <Description>Configurable pulsating and post-unhover inventory highlights.</Description>
+  <Description>Configurable hotkey for playing the active weapon's existing inspection animation.</Description>
   <Groups>
     <element>Utilities</element>
   </Groups>

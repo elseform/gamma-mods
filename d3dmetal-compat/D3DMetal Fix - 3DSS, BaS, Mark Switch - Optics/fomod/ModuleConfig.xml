@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics</moduleName>
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install optic shader fixes">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="D3DMetal optic shader fixes">
+              <description>Installs D3DMetal/DXMT optic shader fixes for 3DSS 4.17, Boomsticks and Sharpsticks 1.5.1, Mark Switch (GAMMA version), and ARC 3DSS 1.6.7. Load after those shader mods and clear appdata/shaders_cache/.</description>
+              <files>
+                <folder source="gamedata" destination="gamedata" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

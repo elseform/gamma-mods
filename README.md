@@ -1,10 +1,11 @@
-# GAMMA Mods, Fixes & Tweaks
+# GAMMA Mods & Fixes
 
 Small standalone mods and targeted fixes for STALKER Anomaly/GAMMA.
 
-## Download & install
+## Installation
 
-Download ready-to-install archives from the [release page](https://github.com/elseform/gamma-mods/releases), then add them to Mod Organizer 2. Check the individual mod notes for any load-order or compatibility requirements.
+Download latest release from the [release page](https://github.com/elseform/gamma-mods/releases/latest), then install using Mod Organizer 2. 
+Check the individual mod notes for any load-order or compatibility requirements.
 
 ## Usage and permissions
 
@@ -16,42 +17,8 @@ This permission covers my original work only. Third-party code and assets keep t
 ## Standalone mods
 
 ### [Flashing Inventory Highlights (FIH)](<mods/Flashing Inventory Highlights - elseform/README.md>)
-
-Adds pulsating flash for inventory / trading grid instead of a static highlight.
-
-Features customizable options:
-
-- Five pulse/fade timing presets and optional custom timing.
-- Post-unhover linger that reaches the next pulse crest before fading out.
-- Minimum and maximum brightness.
-- Color presets and optional custom RGB sliders.
-
-[Source and notes](<mods/Flashing Inventory Highlights - elseform/README.md>)
-
-Special thanks to **kingofthebeats** from the GAMMA Discord server for suggesting lingering highlights.
-
 ### [It's Time To Stop (ITTS)](<mods/Its Time To Stop - elseform/README.md>)
-
-Tracks real-world playtime and helps you keep sessions from running longer than intended.
-
-- Adds total playtime and current-session rows to the PDA ranking tab.
-- Adds an optional real-life HUD clock with configurable placement, fonts, and colors.
-- Sends configurable session-threshold reminders, with optional repeats and a PDA beep.
-- Can progressively change the HUD clock color as a session crosses its warning thresholds.
-- Offers Full, HUD-clock-only, and playtime-statistics-only MO2 installer presets, with no load-order requirements or dependencies beyond stock GAMMA.
-
-[Source and notes](<mods/Its Time To Stop - elseform/README.md>)
-
 ### [Inspect Weapon Hotkey](<mods/Inspect Weapon Hotkey - elseform/README.md>)
-
-Adds a configurable hotkey that plays the current weapon's existing inspect animation on demand.
-
-- Uses each weapon's own bore animation and sound, including grenade-launcher variants.
-- Only starts while the weapon is idle, avoiding reload, firing, and weapon-swap interruptions.
-- Provides MCM settings for enable state, key, modifier, and single-press or double-tap activation.
-- Includes English and Russian localization and falls back to `J` when MCM is unavailable.
-
-[Source and notes](<mods/Inspect Weapon Hotkey - elseform/README.md>)
 
 ## D3DMetal compatibility
 
@@ -61,93 +28,5 @@ the exact source versions in its own README. Clear `appdata/shaders_cache/`
 after installing or updating any of them.
 
 ### [D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics](<d3dmetal-compat/D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics/README.md>)
-
-Built against 3DSS for GAMMA 4.17, Boomsticks and Sharpsticks 1.5.1, and Mark
-Switch (GAMMA ver.).
-
-- Restores red-dot and holographic sight reticles that can disappear under D3DMetal.
-- Fixes scope lens-edge artifacts caused by NaN-producing sphere projection math.
-- Fixes night-vision scope tint initialization for strict HLSL compilers.
-- Fixes thermal scope garbage or black output caused by uninitialized cold-pixel color data.
-- Writes all four bound render targets in the scope depth-restore pass.
-- Bounds the mark-grid loop so garbage input cannot hang the GPU.
-- Load after 3DSS, Boomsticks & Sharpsticks, Mark Switch, and any other optic shader override.
-
-Supersedes the former `D3DMetal Missing Reflex Reticles and Scopes Fix`
-(v1.2.0). Reinstall in its place; there is no migration step.
-
-[Source and notes](<d3dmetal-compat/D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics/README.md>)
-
 ### [D3DMetal Fix - Glossy Puddles - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Glossy Puddles - Metal Loop Guards/README.md>)
-
-Built against Glossy Puddles 1.4.
-
-- Caps the terrain parallax-occlusion loops that can otherwise spin forever on degenerate input.
-- macOS has no TDR-style GPU recovery, so an unbounded shader loop takes down the GPU until restart.
-- Preserves the Glossy Puddles reflection-strength control exactly.
-- Load after Glossy Puddles.
-
-[Source and notes](<d3dmetal-compat/D3DMetal Fix - Glossy Puddles - Metal Loop Guards/README.md>)
-
 ### [D3DMetal Fix - Screen Space Shaders - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Screen Space Shaders - Metal Loop Guards/README.md>)
-
-Built against Screen Space Shaders 23.
-
-- Caps the two parallax-occlusion loops in `sload.h` that can otherwise spin forever on degenerate input.
-- macOS has no TDR-style GPU recovery, so an unbounded shader loop takes down the GPU until restart.
-- Ships the upstream shader unchanged apart from the guards.
-- Load after Screen Space Shaders.
-
-[Source and notes](<d3dmetal-compat/D3DMetal Fix - Screen Space Shaders - Metal Loop Guards/README.md>)
-
-## Fixes
-
-### [G.A.M.M.A. Arti Recipes Overhaul — Ammo Autolooter Crash Fix](<fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly/README.md>)
-
-Script override for `G.A.M.M.A. Arti Recipes Overhaul`.
-
-- Prevents a fatal crash when the autolooter tries to disassemble non-favorited ammo with missing or empty parts data.
-- Guards empty ammo lists, missing parts sections, missing parts lists, and empty parsed parts lists before consuming ammo or degrading tools.
-- Load after `G.A.M.M.A. Arti Recipes Overhaul`.
-
-[Source and notes](<fixes-and-tweaks/SCRIPT FIX - G.A.M.M.A. Arti Recipes Overhaul - Game Crash on Ammo Autolooter Disassembly/README.md>)
-
-### [Kute's Free Zoom Rewrite — FOV Changes by Itself Fix](<fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself/README.md>)
-
-Script override for `Kute's Free Zoom Rewrite`.
-
-- Prevents temporary ADS/free-zoom FOV, HUD FOV, and mouse sensitivity values from being learned as the new baseline.
-- Reads persisted MCM option values first, falling back to live console values only when saved options are unavailable.
-- Load after `Kute's Free Zoom Rewrite`.
-
-[Source and notes](<fixes-and-tweaks/SCRIPT FIX - Kute's Free Zoom Rewrite - FOV Changes by itself/README.md>)
-
-## Tweaks
-
-### [No Grain Rads Effect](<fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect/README.md>)
-
-Config override that disables the radiation grain postprocess without changing radiation gameplay.
-
-- Comments out `postprocess = postprocess_rad` on the base radioactive zone.
-- Keeps radiation zone strengths, attenuation, hit type, and child zone definitions unchanged.
-- Load after mods that edit `gamedata/configs/zones/zone_field_radioactive.ltx`.
-
-[Source and notes](<fixes-and-tweaks/CONFIG TWEAK - No Grain Rads Effect/README.md>)
-
-### [Silent First-pickup Weapon Inspection](<fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection/README.md>)
-
-Script override for first-pickup weapon inspection.
-
-- Prevents actor voice lines from playing during weapon inspection.
-- Keeps the inspection animations and first-pickup tracking behavior.
-- Includes a VArefined companion override; remove `grok_doom_weapons_inspect_varefined.script` if VArefined is not installed.
-
-[Source and notes](<fixes-and-tweaks/SCRIPT TWEAK - Silent First-pickup weapon inspection/README.md>)
-
-## Repository layout
-
-- `mods/`: standalone elseform-authored mods.
-- `d3dmetal-compat/`: shader overrides for running GAMMA through D3DMetal/DXMT on macOS.
-- `fixes-and-tweaks/`: targeted fixes and optional behavior tweaks.
-- `script-fixes-tweaks/`: promoted script fixes and tweaks when applicable.
-- Each entry keeps its install notes and original `gamedata/` paths inside its own folder.

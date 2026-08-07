@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Inspect Weapon Hotkey</moduleName>
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install Inspect Weapon Hotkey">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Inspect Weapon Hotkey">
+              <description>Installs a configurable hotkey that plays the active weapon's existing inspection animation while the weapon is idle.</description>
+              <files>
+                <folder source="gamedata" destination="gamedata" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

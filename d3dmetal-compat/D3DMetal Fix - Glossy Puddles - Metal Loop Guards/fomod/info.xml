@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <fomod>
-  <Name>Flashing Inventory Highlights - elseform</Name>
+  <Name>D3DMetal Fix - Glossy Puddles - Metal Loop Guards - elseform</Name>
   <Author>elseform</Author>
-  <Version>1.1.1</Version>
+  <Version>1.0.0</Version>
   <Website>https://github.com/elseform/gamma-mods/releases</Website>
-  <Description>Configurable pulsating and post-unhover inventory highlights.</Description>
+  <Description>Terrain shader loop guards for Glossy Puddles under D3DMetal/DXMT.</Description>
   <Groups>
     <element>Utilities</element>
   </Groups>

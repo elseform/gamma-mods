@@ -20,10 +20,19 @@ local time_global, GetARGB = time_global, GetARGB
 -- caps the per-cell engine calls at high framerates.
 local PAINT_MS = 33
 
+-- Upper bound on the exit's rise phase, in milliseconds.
+local RISE_MAX_MS = 100
+
 -- MCM storage namespace. Version 1.1.0 replaces the original generic
 -- `flash_hl/*` paths with author-scoped `elseform_fih/*` paths.
 local MCM_ROOT = "elseform_fih"
 local LEGACY_MCM_ROOT = "flash_hl"
+
+-- Options whose stored value changed meaning and must not be carried over.
+-- 1.1.0's `linger_duration` was the fade that started at the next pulse crest;
+-- 1.1.1's `exit_duration` is the whole rise-hold-fade exit, so an inherited
+-- number would describe a different animation than the one it was tuned for.
+local STALE_MCM_OPTIONS = { "linger_duration" }
 
 -- Highlight color ids that should flash (see clr_list_hl in utils_ui.script)
 local FLASH_CLR_IDS = {
@@ -34,7 +43,7 @@ local FLASH_CLR_IDS = {
 local DEF = {
 	enabled = true,
 	linger_enabled = true,
-	linger_duration = 1.0, -- seconds after genuine unhover
+	exit_duration = 0.8, -- total exit animation after genuine unhover, in seconds
 	period = 1.2, -- seconds per full pulse
 	timing_preset = "balanced",
 	use_custom_timing = false,
@@ -47,13 +56,13 @@ local DEF = {
 	clr_b = 40,
 }
 
--- Pulse period and post-crest fade duration, in seconds.
+-- Pulse period and total rise-hold-fade exit duration, in seconds.
 local TIMING_PRESETS = {
-	snappy = { 0.8, 0.5 },
-	responsive = { 1.0, 0.7 },
-	balanced = { 1.2, 1.0 },
+	snappy = { 0.8, 0.4 },
+	responsive = { 1.0, 0.6 },
+	balanced = { 1.2, 0.8 },
 	calm = { 1.5, 1.0 },
-	slow = { 1.8, 1.4 },
+	slow = { 1.8, 1.2 },
 }
 
 -- Color presets for the MCM dropdown, {alpha, red, green, blue}. Alpha 40
@@ -70,7 +79,7 @@ local CLR_PRESETS = {
 }
 
 -- Weak keys let discarded inventory cells disappear without explicit teardown.
--- Active entries only carry `base`; clear/crest/fade fields exist briefly after unhover.
+-- Active entries only carry `base`; exit fields exist briefly after unhover.
 local tracked = setmetatable({}, { __mode = "k" })
 local dirty = false -- new cell tracked this frame: paint immediately, bypass throttle
 local last_paint = 0
@@ -82,7 +91,7 @@ local highlight_batch_epoch
 local cfg = {
 	enabled = DEF.enabled,
 	linger_enabled = DEF.linger_enabled,
-	linger_ms = DEF.linger_duration * 1000,
+	exit_ms = DEF.exit_duration * 1000,
 	period = DEF.period,
 	custom_timing = DEF.use_custom_timing,
 	min_b = DEF.min_bright / 100,
@@ -132,6 +141,14 @@ local function migrate_legacy_options()
 		end
 	end
 
+	for i = 1, #STALE_MCM_OPTIONS do
+		local path = MCM_ROOT .. "/" .. STALE_MCM_OPTIONS[i]
+		if config:line_exist("mcm", path) then
+			config:remove_line("mcm", path)
+			changed = true
+		end
+	end
+
 	if migrated_period then
 		-- A released custom period must remain authoritative even if MCM wrote
 		-- the new default toggle before the migration callback ran.
@@ -157,12 +174,12 @@ local function refresh_settings(tg)
 		cfg.custom_timing = ui_mcm.get(MCM_ROOT .. "/use_custom_timing") or false
 		if cfg.custom_timing then
 			cfg.period = ui_mcm.get(MCM_ROOT .. "/period") or DEF.period
-			cfg.linger_ms = (ui_mcm.get(MCM_ROOT .. "/linger_duration") or DEF.linger_duration) * 1000
+			cfg.exit_ms = (ui_mcm.get(MCM_ROOT .. "/exit_duration") or DEF.exit_duration) * 1000
 		else
 			local timing = TIMING_PRESETS[ui_mcm.get(MCM_ROOT .. "/timing_preset") or DEF.timing_preset]
 				or TIMING_PRESETS[DEF.timing_preset]
 			cfg.period = timing[1]
-			cfg.linger_ms = timing[2] * 1000
+			cfg.exit_ms = timing[2] * 1000
 		end
 		cfg.min_b = (ui_mcm.get(MCM_ROOT .. "/min_bright") or DEF.min_bright) / 100
 		cfg.max_b = (ui_mcm.get(MCM_ROOT .. "/max_bright") or DEF.max_bright) / 100
@@ -199,16 +216,7 @@ local function pulse_color(data, factor)
 	return set_alpha(data.base, min(255, floor(base_a * factor)))
 end
 
-local function next_pulse_crest(tg)
-	local period_ms = (cfg.period > 0 and cfg.period or DEF.period) * 1000
-	local delay = period_ms * 0.25 - ((tg - pulse_epoch) % period_ms)
-	if delay < 0 then
-		delay = delay + period_ms
-	end
-	return tg + delay
-end
-
-local function finish_linger(cell)
+local function finish_exit(cell)
 	if chained_highlight then
 		-- Let persistent-highlight wrappers restore their own color instead of
 		-- bypassing the chain with hl:Show(false).
@@ -219,8 +227,8 @@ end
 
 local function restore_all()
 	for cell, data in pairs(tracked) do
-		if data.linger_crest then
-			finish_linger(cell)
+		if data.exit_end then
+			finish_exit(cell)
 		elseif data.base and cell.hl and cell.hl:IsShown() then
 			cell.hl:SetTextureColor(data.base)
 			tracked[cell] = nil
@@ -237,18 +245,34 @@ local function resolve_pending_clears(has_focus, tg)
 		if data.pending then
 			data.pending = nil
 
-			if has_focus or (not cfg.enabled) or (not cfg.linger_enabled) or cfg.linger_ms <= 0 then
+			if has_focus or (not cfg.enabled) or (not cfg.linger_enabled) or cfg.exit_ms <= 0 then
 				tracked[cell] = nil
-			elseif not data.linger_crest then
-				-- Keep the synchronized pulse alive through its next bright crest.
-				-- The configured duration is the fade that begins at that crest.
-				data.linger_crest = next_pulse_crest(tg)
+			elseif not data.exit_end then
+				-- Snapshot one deterministic exit. Later timing changes apply to the
+				-- next unhover instead of stretching an animation already in flight.
+				data.base = data.base or data.pending_clr
+				if data.base and data.pending_clr then
+					local duration = cfg.exit_ms
+					-- Cap the rise so a long exit still snaps to full brightness
+					-- (the point of the linger) instead of creeping up to it.
+					local rise = min(duration / 8, RISE_MAX_MS)
+					local hold = duration / 4
+					data.exit_start = tg
+					data.exit_rise_end = tg + rise
+					data.exit_hold_end = data.exit_rise_end + hold
+					data.exit_end = tg + duration
+					data.exit_peak_clr = pulse_color(data, cfg.max_b)
+					data.exit_start_a = band(brshift(data.pending_clr, 24), 255)
+					data.exit_peak_a = band(brshift(data.exit_peak_clr, 24), 255)
+				else
+					tracked[cell] = nil
+				end
 			end
 
 			data.pending_clr = nil
 			if tracked[cell]
-				and data.linger_crest
-				and ((not data.linger_end) or tg < data.linger_end)
+				and data.exit_end
+				and tg < data.exit_end
 				and cell.hl
 			then
 				-- UnHighlight_All already ran through the normal chain. Re-show only
@@ -256,7 +280,7 @@ local function resolve_pending_clears(has_focus, tg)
 				cell.hl:Show(true)
 				dirty = true
 			elseif tracked[cell] then
-				finish_linger(cell)
+				finish_exit(cell)
 			end
 		end
 	end
@@ -297,24 +321,26 @@ local function pulse()
 				data.base = data.pending_clr or hl:GetTextureColor()
 			end
 
-			if data.linger_crest
-				and ((not cfg.linger_enabled) or cfg.linger_ms <= 0)
-			then
-				finish_linger(cell)
-			elseif data.linger_crest and tg >= data.linger_crest then
-				if not data.linger_end then
-					data.linger_start = data.linger_crest
-					data.linger_end = data.linger_crest + cfg.linger_ms
-					data.linger_clr = pulse_color(data, cfg.max_b)
-				end
-
-				if tg >= data.linger_end then
-					finish_linger(cell)
+			if data.exit_end then
+				-- An exit in flight keeps its snapshot timings, but switching the
+				-- feature off is a request to stop now, not after this one finishes.
+				if (not cfg.linger_enabled) or tg >= data.exit_end then
+					finish_exit(cell)
+				elseif tg < data.exit_rise_end then
+					local duration = data.exit_rise_end - data.exit_start
+					local progress = duration > 0 and (tg - data.exit_start) / duration or 1
+					local alpha = data.exit_start_a
+						+ (data.exit_peak_a - data.exit_start_a) * progress
+					hl:SetTextureColor(set_alpha(data.exit_peak_clr, floor(alpha)))
+				elseif tg < data.exit_hold_end then
+					hl:SetTextureColor(data.exit_peak_clr)
 				else
-					local duration = data.linger_end - data.linger_start
-					local remaining = duration > 0 and (data.linger_end - tg) / duration or 0
-					local linger_a = band(brshift(data.linger_clr, 24), 255)
-					hl:SetTextureColor(set_alpha(data.linger_clr, floor(linger_a * remaining)))
+					local duration = data.exit_end - data.exit_hold_end
+					local remaining = duration > 0 and (data.exit_end - tg) / duration or 0
+					hl:SetTextureColor(set_alpha(
+						data.exit_peak_clr,
+						floor(data.exit_peak_a * remaining)
+					))
 				end
 			else
 				hl:SetTextureColor(pulse_color(data, factor))
@@ -340,7 +366,7 @@ function on_game_start()
 	utils_ui.UICellItem.Highlight = function(self, state, clr_id, main_clr)
 		local t = tracked[self]
 		if (not state) and t and inventory_updating then
-			if (not t.linger_crest) and self.hl then
+			if (not t.exit_end) and self.hl then
 				t.pending_clr = self.hl:GetTextureColor()
 			end
 			chained_highlight(self, state, clr_id, main_clr)
@@ -351,7 +377,7 @@ function on_game_start()
 		chained_highlight(self, state, clr_id, main_clr)
 
 		if state and clr_id and FLASH_CLR_IDS[clr_id] and self.hl and self.hl:IsShown() then
-			if (not t) or t.pending or t.linger_crest then
+			if (not t) or t.pending or t.exit_end then
 				if inventory_updating then
 					highlight_batch_epoch = highlight_batch_epoch or time_global()
 					pulse_epoch = highlight_batch_epoch
@@ -364,10 +390,13 @@ function on_game_start()
 				t.base = false -- reuse the entry table, no allocation on re-highlight
 				t.pending = nil
 				t.pending_clr = nil
-				t.linger_crest = nil
-				t.linger_start = nil
-				t.linger_end = nil
-				t.linger_clr = nil
+				t.exit_start = nil
+				t.exit_rise_end = nil
+				t.exit_hold_end = nil
+				t.exit_end = nil
+				t.exit_peak_clr = nil
+				t.exit_start_a = nil
+				t.exit_peak_a = nil
 			else
 				tracked[self] = { base = false }
 			end
@@ -479,13 +508,13 @@ function on_mcm_load()
 			{ id = "use_custom_timing", type = "check", val = 1, def = DEF.use_custom_timing },
 			{ id = "period", type = "track", val = 2, min = 0.4, max = 3.0, step = 0.1, def = DEF.period },
 			{
-				id = "linger_duration",
+				id = "exit_duration",
 				type = "track",
 				val = 2,
 				min = 0.0,
 				max = 3.0,
 				step = 0.1,
-				def = DEF.linger_duration,
+				def = DEF.exit_duration,
 			},
 			{ id = "divider", type = "line" },
 			{ id = "use_custom_clr", type = "check", val = 1, def = DEF.use_custom_clr },

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>D3DMetal Fix - Screen Space Shaders - Metal Loop Guards</moduleName>
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install Screen Space Shaders loop guards">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Screen Space Shaders loop guards">
+              <description>Installs a guarded Screen Space Shaders 23 sload.h that prevents unbounded parallax loops. Load after Screen Space Shaders and clear appdata/shaders_cache/.</description>
+              <files>
+                <folder source="gamedata" destination="gamedata" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

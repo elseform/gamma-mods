@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>D3DMetal Fix - Screen Space Shaders - Metal Loop Guards - elseform</Name>
+  <Author>elseform</Author>
+  <Version>1.0.0</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases</Website>
+  <Description>Parallax shader loop guards for Screen Space Shaders under D3DMetal/DXMT.</Description>
+  <Groups>
+    <element>Utilities</element>
+  </Groups>
+</fomod>

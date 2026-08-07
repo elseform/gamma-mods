@@ -16,7 +16,7 @@
 		<text>Timing</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_timing_preset_desc">
-		<text>Sets the pulse period and, when Linger is enabled, the fade duration.</text>
+		<text>Sets the pulse period and, when Linger is enabled, the total rise-hold-fade exit duration.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_timing">
 		<text>Custom timing</text>
@@ -28,13 +28,13 @@
 		<text>Linger</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_linger_enabled_desc">
-		<text>After unhover, let related-item highlights reach the next pulse peak, then fade them out.</text>
+		<text>After unhover, quickly brighten related-item highlights, hold them briefly, then fade them out on a predictable timer.</text>
 	</string>
-	<string id="ui_mcm_elseform_fih_linger_duration">
+	<string id="ui_mcm_elseform_fih_exit_duration">
 		<text>Linger duration (seconds)</text>
 	</string>
-	<string id="ui_mcm_elseform_fih_linger_duration_desc">
-		<text>Fade-out time after the next pulse peak when Custom timing is enabled. Set to zero for an immediate clear.</text>
+	<string id="ui_mcm_elseform_fih_exit_duration_desc">
+		<text>Total rise, full-bright hold, and fade time when Custom timing is enabled. Set to zero for an immediate clear.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_period">
 		<text>Pulse period (seconds)</text>
@@ -43,19 +43,19 @@
 		<text>Duration of one full bright-dim-bright cycle when Custom timing is enabled.</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_snappy">
-		<text>Snappy (0.8 / 0.5 s)</text>
+		<text>Snappy (0.8 / 0.4 s)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_responsive">
-		<text>Responsive (1.0 / 0.7 s)</text>
+		<text>Responsive (1.0 / 0.6 s)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_balanced">
-		<text>Balanced (1.2 / 1.0 s)</text>
+		<text>Balanced (1.2 / 0.8 s)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_calm">
 		<text>Calm (1.5 / 1.0 s)</text>
 	</string>
 	<string id="ui_mcm_lst_fih_timing_slow">
-		<text>Slow (1.8 / 1.4 s)</text>
+		<text>Slow (1.8 / 1.2 s)</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_min_bright">
 		<text>Minimum brightness (%)</text>

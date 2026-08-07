@@ -8,13 +8,19 @@ Each focused set begins together on the rising half of its pulse.
 
 Features customizable options:
 
-- Optional post-unhover linger that completes the pulse to its next bright
-  crest, then runs a configurable fade-out;
-- Five pulse/fade timing presets and optional custom timing sliders;
+- Optional fixed-duration post-unhover linger that rises quickly to full
+  brightness, holds briefly, then fades on a predictable timer;
+- Five pulse/exit timing presets and optional custom timing sliders;
 - Minimum/maximum brightness;
 - Color presets and optional custom RGB sliders.
 
 In MCM, the mod appears as the purple `Flashing Item Highlights` entry.
+
+## Upgrading from 1.1.0
+
+The linger is now a fixed-duration exit rather than a fade that waited for the
+next pulse crest, so the slider means something different than it did. Upgrading
+resets that one setting to its default; every other MCM option is preserved.
 
 ## Install & Load order
 

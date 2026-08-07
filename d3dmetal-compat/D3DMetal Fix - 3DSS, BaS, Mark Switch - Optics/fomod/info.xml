@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics - elseform</Name>
+  <Author>elseform</Author>
+  <Version>1.0.0</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases</Website>
+  <Description>Optic shader fixes for 3DSS, Boomsticks and Sharpsticks, Mark Switch, and ARC under D3DMetal/DXMT.</Description>
+  <Groups>
+    <element>Utilities</element>
+  </Groups>
+</fomod>

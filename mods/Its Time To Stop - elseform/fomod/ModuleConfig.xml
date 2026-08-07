@@ -2,6 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
   <moduleName>It's Time To Stop</moduleName>
+  <moduleImage path="fomod\ITTS11_MCM.png" />
   <requiredInstallFiles>
     <file source="meta.ini" destination="meta.ini" />
     <file source="README.md" destination="README.md" />
@@ -18,6 +19,7 @@
           <plugins order="Explicit">
             <plugin name="Full package">
               <description>HUD clock, playtime statistics, session notifications, and progressive clock colors.</description>
+              <image path="fomod\ITTS11_MCM.png" />
               <files>
                 <file source="gamedata\configs\ui\elseform_itts_clock.xml" destination="gamedata\configs\ui\elseform_itts_clock.xml" />
                 <file source="gamedata\scripts\elseform_itts_clock.script" destination="gamedata\scripts\elseform_itts_clock.script" />
@@ -33,6 +35,7 @@
             </plugin>
             <plugin name="HUD clock only">
               <description>A pure local-time HUD clock. Does not track sessions, write to saves, or create the sessiontime file.</description>
+              <image path="fomod\ITTS11_MCM.png" />
               <files>
                 <file source="gamedata\configs\ui\elseform_itts_clock.xml" destination="gamedata\configs\ui\elseform_itts_clock.xml" />
                 <file source="gamedata\scripts\elseform_itts_clock.script" destination="gamedata\scripts\elseform_itts_clock.script" />
@@ -44,6 +47,7 @@
             </plugin>
             <plugin name="Playtime statistics only">
               <description>Total and session playtime rows in the PDA. Persists total time in saves and session state in appdata.</description>
+              <image path="fomod\ITTS11_MCM.png" />
               <files>
                 <file source="gamedata\scripts\elseform_itts_stats.script" destination="gamedata\scripts\elseform_itts_stats.script" />
                 <file source="gamedata\scripts\elseform_itts_stats_mcm.script" destination="gamedata\scripts\elseform_itts_stats_mcm.script" />
