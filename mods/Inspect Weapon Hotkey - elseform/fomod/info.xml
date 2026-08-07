@@ -2,7 +2,7 @@
 <fomod>
   <Name>Inspect Weapon Hotkey - elseform</Name>
   <Author>elseform</Author>
-  <Version>1.0.1</Version>
+  <Version>1.0.2</Version>
   <Website>https://github.com/elseform/gamma-mods/releases</Website>
   <Description>Configurable hotkey for playing the active weapon's existing inspection animation.</Description>
   <Groups>

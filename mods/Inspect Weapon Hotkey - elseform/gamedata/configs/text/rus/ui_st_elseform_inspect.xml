@@ -2,11 +2,11 @@
 <string_table>
 
 	<string id="ui_mcm_menu_elseform_inspect">
-		<text>%c[255,77,166,255]Осмотр оружия</text>
+		<text>%c[255,77,166,255]IWH</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_title">
-		<text>Осмотр оружия</text>
+		<text>Inspect Weapon Hotkey</text>
 	</string>
 
 	<string id="ui_mcm_elseform_inspect_enabled">

@@ -23,9 +23,6 @@
 	<string id="ui_mcm_menu_elseform_itts">
 		<text>%c[255,255,160,40]ITTS</text>
 	</string>
-	<string id="ui_mcm_menu_itts_stat">
-		<text>%c[255,255,160,40]ITTS</text>
-	</string>
 	<string id="ui_mcm_menu_itts_clock">
 		<text>HUD часы</text>
 	</string>

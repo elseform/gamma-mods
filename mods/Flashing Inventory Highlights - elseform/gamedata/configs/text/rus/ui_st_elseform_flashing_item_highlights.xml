@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
 	<string id="ui_mcm_menu_elseform_fih">
-		<text>%c[255,190,90,255]Flashing Item Highlights</text>
+		<text>%c[255,190,90,255]FIH</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_title">
-		<text>Мигающая подсветка инвентаря (FIH)</text>
+		<text>Flashing Inventory Highlights</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_enabled">
 		<text>Включить пульсирующую подсветку</text>
@@ -13,13 +13,13 @@
 		<text>Подсветка совместимых предметов (прицелы, глушители, инструменты для улучшений) пульсирует вместо статичного свечения.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_timing_preset">
-		<text>Профиль времени</text>
+		<text>Тайминг</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_timing_preset_desc">
 		<text>Задаёт период пульсации и, когда включено сохранение подсветки, общую длительность послесвечения: усиление, удержание и затухание.</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_timing">
-		<text>Настроить время</text>
+		<text>Настроить тайминг</text>
 	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_timing_desc">
 		<text>Использовать ползунки «Период пульсации» и «Длительность послесвечения» ниже вместо выбранного профиля времени.</text>
