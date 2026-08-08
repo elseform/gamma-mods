@@ -87,6 +87,7 @@ local inventory_updating = false
 local chained_highlight
 local pulse_epoch = 0
 local highlight_batch_epoch
+local pending_count = 0
 
 local cfg = {
 	enabled = DEF.enabled,
@@ -100,7 +101,6 @@ local cfg = {
 	r = DEF.clr_r,
 	g = DEF.clr_g,
 	b = DEF.clr_b,
-	use_clr = true,
 	omega = PI2 / (DEF.period * 1000), -- precomputed sine frequency
 }
 local cfg_tg = 0
@@ -191,12 +191,10 @@ local function refresh_settings(tg)
 			cfg.r = ui_mcm.get(MCM_ROOT .. "/clr_r") or DEF.clr_r
 			cfg.g = ui_mcm.get(MCM_ROOT .. "/clr_g") or DEF.clr_g
 			cfg.b = ui_mcm.get(MCM_ROOT .. "/clr_b") or DEF.clr_b
-			cfg.use_clr = true
 		else
 			local p = CLR_PRESETS[ui_mcm.get(MCM_ROOT .. "/clr_preset") or DEF.clr_preset]
 				or CLR_PRESETS[DEF.clr_preset]
 			cfg.a, cfg.r, cfg.g, cfg.b = p[1], p[2], p[3], p[4]
-			cfg.use_clr = true
 		end
 		cfg.omega = PI2 / ((cfg.period > 0 and cfg.period or DEF.period) * 1000)
 	end
@@ -208,12 +206,9 @@ end
 
 local function pulse_color(data, factor)
 	local base_a = band(brshift(data.base, 24), 255)
-	if cfg.use_clr then
-		-- Presets carry their own alpha; custom RGB keeps the sampled strength.
-		local a = min(255, floor((cfg.a or base_a) * factor))
-		return GetARGB(a, cfg.r, cfg.g, cfg.b)
-	end
-	return set_alpha(data.base, min(255, floor(base_a * factor)))
+	-- Presets carry their own alpha; custom RGB keeps the sampled strength.
+	local a = min(255, floor((cfg.a or base_a) * factor))
+	return GetARGB(a, cfg.r, cfg.g, cfg.b)
 end
 
 local function finish_exit(cell)
@@ -239,11 +234,16 @@ local function restore_all()
 end
 
 local function resolve_pending_clears(has_focus, tg)
+	if pending_count == 0 then
+		return
+	end
+
 	refresh_settings(tg)
 
 	for cell, data in pairs(tracked) do
 		if data.pending then
 			data.pending = nil
+			pending_count = pending_count - 1
 
 			if has_focus or (not cfg.enabled) or (not cfg.linger_enabled) or cfg.exit_ms <= 0 then
 				tracked[cell] = nil
@@ -370,7 +370,10 @@ function on_game_start()
 				t.pending_clr = self.hl:GetTextureColor()
 			end
 			chained_highlight(self, state, clr_id, main_clr)
-			t.pending = true
+			if not t.pending then
+				t.pending = true
+				pending_count = pending_count + 1
+			end
 			return
 		end
 
@@ -388,7 +391,10 @@ function on_game_start()
 
 			if t then
 				t.base = false -- reuse the entry table, no allocation on re-highlight
-				t.pending = nil
+				if t.pending then
+					pending_count = pending_count - 1
+					t.pending = nil
+				end
 				t.pending_clr = nil
 				t.exit_start = nil
 				t.exit_rise_end = nil

@@ -1,0 +1,6 @@
+# Mod payloads are stored byte-for-byte. The repository copy must match what
+# MO2, the flat installation, and the packaged release archive receive, because
+# the workflow verifies exactly that parity. Most GAMMA source mods are
+# Windows-authored and use CRLF, so git must never translate line endings on
+# checkout or on commit.
+* -text
