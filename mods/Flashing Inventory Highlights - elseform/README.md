@@ -16,6 +16,13 @@ Features customizable options:
 
 In MCM, the mod appears as the purple `Flashing Item Highlights` entry.
 
+## Changes in 1.1.3
+
+- Skip the tracked-highlight scan on inventory frames with no pending clear
+  operations.
+- Remove a redundant internal color-state flag.
+- Preserve existing highlight behavior, settings, and saved values.
+
 ## Upgrading from 1.1.0
 
 The linger is now a fixed-duration exit rather than a fade that waited for the
