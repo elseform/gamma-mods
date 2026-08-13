@@ -114,4 +114,10 @@
 	<string id="ui_mcm_elseform_fih_clr_b">
 		<text>Синий</text>
 	</string>
+	<string id="ui_mcm_elseform_fih_use_faction_clr">
+		<text>Цвет подсветки фракции (требуется UI Rework GAMMA Style)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_faction_clr_desc">
+		<text>Использовать цвет подсветки текущей фракции из UI Rework. Яркость и тайминг FIH не меняются. Если UI Rework недоступен, FIH использует выбранный ниже цвет.</text>
+	</string>
 </string_table>

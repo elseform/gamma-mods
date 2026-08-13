@@ -49,6 +49,7 @@ local DEF = {
 	use_custom_timing = false,
 	min_bright = 10, -- %
 	max_bright = 250, -- % (base "blue" alpha is only 40/255, so >100% is desirable)
+	use_faction_clr = false,
 	use_custom_clr = false,
 	clr_preset = "orange",
 	clr_r = 255,
@@ -97,6 +98,8 @@ local cfg = {
 	custom_timing = DEF.use_custom_timing,
 	min_b = DEF.min_bright / 100,
 	max_b = DEF.max_bright / 100,
+	use_faction_clr = DEF.use_faction_clr,
+	faction_clr = nil,
 	custom = DEF.use_custom_clr,
 	r = DEF.clr_r,
 	g = DEF.clr_g,
@@ -183,8 +186,17 @@ local function refresh_settings(tg)
 		end
 		cfg.min_b = (ui_mcm.get(MCM_ROOT .. "/min_bright") or DEF.min_bright) / 100
 		cfg.max_b = (ui_mcm.get(MCM_ROOT .. "/max_bright") or DEF.max_bright) / 100
+		cfg.use_faction_clr = ui_mcm.get(MCM_ROOT .. "/use_faction_clr") or false
+		cfg.faction_clr = nil
+		if cfg.use_faction_clr and ui_inventory and ui_inventory.faction_colors then
+			local actor = db and db.actor
+			local community = actor and actor:character_community()
+			community = community and community:sub(7)
+			cfg.faction_clr = community
+				and (ui_inventory.faction_colors[community] or ui_inventory.faction_colors.stalker)
+		end
 
-		-- Color source: "Customize color" ON -> RGB sliders; OFF -> preset dropdown.
+		-- Faction mode overrides FIH RGB; otherwise custom sliders override preset.
 		cfg.custom = ui_mcm.get(MCM_ROOT .. "/use_custom_clr")
 		if cfg.custom then
 			cfg.a = nil
@@ -206,9 +218,15 @@ end
 
 local function pulse_color(data, factor)
 	local base_a = band(brshift(data.base, 24), 255)
+	local faction_clr = cfg.faction_clr
 	-- Presets carry their own alpha; custom RGB keeps the sampled strength.
-	local a = min(255, floor((cfg.a or base_a) * factor))
-	return GetARGB(a, cfg.r, cfg.g, cfg.b)
+	-- Faction mode takes UI Rework's current RGB while retaining FIH's normal
+	-- highlight strength, so UI Rework's opaque slot alpha does not flatten the pulse.
+	local a = min(255, floor((faction_clr and CLR_PRESETS.blue[1] or cfg.a or base_a) * factor))
+	local r = faction_clr and band(brshift(faction_clr, 16), 255) or cfg.r
+	local g = faction_clr and band(brshift(faction_clr, 8), 255) or cfg.g
+	local b = faction_clr and band(faction_clr, 255) or cfg.b
+	return GetARGB(a, r, g, b)
 end
 
 local function finish_exit(cell)
@@ -233,7 +251,7 @@ local function restore_all()
 	end
 end
 
-local function resolve_pending_clears(has_focus, tg)
+local function resolve_pending_clears(tg)
 	if pending_count == 0 then
 		return
 	end
@@ -245,7 +263,9 @@ local function resolve_pending_clears(has_focus, tg)
 			data.pending = nil
 			pending_count = pending_count - 1
 
-			if has_focus or (not cfg.enabled) or (not cfg.linger_enabled) or cfg.exit_ms <= 0 then
+			-- A different focused cell must not cancel this cell's exit. Cells in
+			-- the new related set already had their pending state cleared above.
+			if (not cfg.enabled) or (not cfg.linger_enabled) or cfg.exit_ms <= 0 then
 				tracked[cell] = nil
 			elseif not data.exit_end then
 				-- Snapshot one deterministic exit. Later timing changes apply to the
@@ -438,7 +458,7 @@ function on_game_start()
 			end
 		end
 
-		resolve_pending_clears(self.found_cell and true or false, time_global())
+		resolve_pending_clears(time_global())
 		pulse()
 	end
 
@@ -510,6 +530,7 @@ function on_mcm_load()
 			},
 			{ id = "min_bright", type = "track", val = 2, min = 0, max = 100, step = 5, def = DEF.min_bright },
 			{ id = "max_bright", type = "track", val = 2, min = 100, max = 400, step = 10, def = DEF.max_bright },
+			{ id = "use_faction_clr", type = "check", val = 1, def = DEF.use_faction_clr },
 			{ id = "divider_2", type = "line" },
 			{ id = "use_custom_timing", type = "check", val = 1, def = DEF.use_custom_timing },
 			{ id = "period", type = "track", val = 2, min = 0.4, max = 3.0, step = 0.1, def = DEF.period },

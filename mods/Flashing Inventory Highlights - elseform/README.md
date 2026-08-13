@@ -12,16 +12,19 @@ Features customizable options:
   brightness, holds briefly, then fades on a predictable timer;
 - Five pulse/exit timing presets and optional custom timing sliders;
 - Minimum/maximum brightness;
+- Optional current-faction highlight color from UI Rework G.A.M.M.A. Style;
 - Color presets and optional custom RGB sliders.
 
 In MCM, the mod appears as the purple `Flashing Item Highlights` entry.
 
-## Changes in 1.1.3
+## Changes in 1.2.0
 
-- Skip the tracked-highlight scan on inventory frames with no pending clear
-  operations.
-- Remove a redundant internal color-state flag.
-- Preserve existing highlight behavior, settings, and saved values.
+- Add an optional UI Rework G.A.M.M.A. Style faction-color source while keeping
+  FIH's pulse brightness and timing.
+- Let each outgoing highlight set complete its linger when the cursor crosses
+  another item; rapid movement may leave several brief overlapping fades.
+- Keep faction coloring disabled by default and fall back to the selected FIH
+  color when UI Rework is unavailable.
 
 ## Upgrading from 1.1.0
 
@@ -39,3 +42,7 @@ component choices; the installer page is a preview of the complete package.
 FIH chains the active inventory highlight implementation instead of replacing
 game files. When a linger ends, it returns control through that chain instead
 of hiding the highlight layer directly.
+
+The optional faction-color setting reads UI Rework G.A.M.M.A. Style's current
+actor-faction RGB. FIH keeps ownership of pulse brightness and timing. If UI
+Rework is absent, FIH falls back to its selected preset or custom color.

@@ -2,9 +2,9 @@
 <fomod>
   <Name>Flashing Inventory Highlights - elseform</Name>
   <Author>elseform</Author>
-  <Version>1.1.3</Version>
+  <Version>1.2.0</Version>
   <Website>https://github.com/elseform/gamma-mods/releases</Website>
-  <Description>Configurable pulsating and post-unhover inventory highlights.</Description>
+  <Description>Configurable pulsating, post-unhover, and optional faction-colored inventory highlights.</Description>
   <Groups>
     <element>Utilities</element>
   </Groups>

@@ -69,6 +69,12 @@
 	<string id="ui_mcm_elseform_fih_max_bright_desc">
 		<text>Highlight intensity at the bright point of the pulse.</text>
 	</string>
+	<string id="ui_mcm_elseform_fih_use_faction_clr">
+		<text>Faction Highlight Color (UI Rework GAMMA Style required)</text>
+	</string>
+	<string id="ui_mcm_elseform_fih_use_faction_clr_desc">
+		<text>Use your current faction's highlight color from UI Rework. FIH brightness and timing remain unchanged. When UI Rework is unavailable, FIH uses the selected color below.</text>
+	</string>
 	<string id="ui_mcm_elseform_fih_use_custom_clr">
 		<text>Custom color</text>
 	</string>
