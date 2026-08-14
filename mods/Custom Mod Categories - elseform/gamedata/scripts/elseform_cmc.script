@@ -1,0 +1,426 @@
+-- Custom Mod Categories
+--
+-- CMC discovers MCM pages during the normal gathering pass. Explicit category
+-- assignments are stored in the dedicated [cmc] section of axr_options.ltx;
+-- missing entries are uncategorized.
+
+local CMC_ID = "elseform_cmc"
+local CONFIG_SECTION = "cmc"
+local MCM_ID = "mcm"
+local UNCATEGORIZED_VALUE = -1
+local OTHER_VALUE = 0
+local config_dirty = false
+
+local category_definitions = {
+	{ id = "favorites", value = 14, text = "ui_mcm_elseform_cmc_category_favorites" },
+	{ id = "ui", value = 1, text = "ui_mcm_elseform_cmc_category_ui" },
+	{ id = "gameplay", value = 2, text = "ui_mcm_elseform_cmc_category_gameplay" },
+	{ id = "graphics", value = 3, text = "ui_mcm_elseform_cmc_category_graphics" },
+	{ id = "crafting", value = 4, text = "ui_mcm_elseform_cmc_category_crafting" },
+	{ id = "inventory", value = 5, text = "ui_mcm_elseform_cmc_category_inventory" },
+	{ id = "weapons", value = 6, text = "ui_mcm_elseform_cmc_category_weapons" },
+	{ id = "pda", value = 7, text = "ui_mcm_elseform_cmc_category_pda" },
+	{ id = "audio", value = 8, text = "ui_mcm_elseform_cmc_category_audio" },
+	{ id = "animation", value = 9, text = "ui_mcm_elseform_cmc_category_animation" },
+	{ id = "controls", value = 10, text = "ui_mcm_elseform_cmc_category_controls" },
+	{ id = "world", value = 11, text = "ui_mcm_elseform_cmc_category_world" },
+	{ id = "ai", value = 12, text = "ui_mcm_elseform_cmc_category_ai" },
+	{ id = "system", value = 13, text = "ui_mcm_elseform_cmc_category_system" },
+	{ id = "other", value = OTHER_VALUE, text = "ui_mcm_elseform_cmc_category_other" },
+}
+
+local uncategorized_definition = {
+	id = "uncategorized",
+	value = UNCATEGORIZED_VALUE,
+	text = "ui_mcm_elseform_cmc_category_uncategorized",
+}
+
+-- Defaults mirror the complete category set curated in the development profile.
+-- First launch writes only these explicit assignments; MCM's built-in Default
+-- button stages the same mapping through the normal MCM flow.
+local default_assignments = {
+	["21_game"] = 2,
+	["3d_scopes"] = 6,
+	["EFT_ADS"] = 6,
+	["RF_package_patch"] = 7,
+	["SMR"] = 2,
+	["SortingPlus"] = 5,
+	["ab"] = 12,
+	["ag"] = 12,
+	["aol_hf"] = 4,
+	["ap"] = 12,
+	["ape"] = 7,
+	["at"] = 12,
+	["auto_looter"] = 5,
+	["beef_nvg"] = 3,
+	["better_upgrade_tooltips"] = 4,
+	["body_health_system"] = 2,
+	["campfire_placeable"] = 2,
+	["campfires_on_map"] = 7,
+	["companion_anti_awol"] = 12,
+	["craft_from_stashes"] = 4,
+	["craft_in_tooltip"] = 1,
+	["crpmcm"] = 9,
+	["customsquadsize"] = 12,
+	["demonized_dialog_fov"] = 1,
+	["demonized_ledge_grabbing"] = 2,
+	["dii"] = 1,
+	["dit"] = 2,
+	["dorn_dont_reequip_pda"] = 2,
+	["dorn_faster_skinning"] = 2,
+	["dorn_free_zoom"] = 14,
+	["dorn_prone_fix"] = 2,
+	["dotmarks"] = 1,
+	["dph_loot_cond"] = 2,
+	["drop_item"] = 2,
+	["drx_da"] = 11,
+	["dynamic_cover"] = 2,
+	["efp_ui"] = 1,
+	["elseform_fih"] = 5,
+	["elseform_inspect"] = 6,
+	["elseform_itts"] = 1,
+	["elseform_neat_ui_tweaks"] = 1,
+	["exo"] = 2,
+	["exo_power"] = 2,
+	["extra_level_transitions"] = 2,
+	["fail_task_mod"] = 7,
+	["fddar"] = 9,
+	["fftd"] = 2,
+	["fmode_sound"] = 6,
+	["free_zoom"] = 10,
+	["gggf"] = 2,
+	["glowsticks"] = 2,
+	["grok_artefacts_bip"] = 2,
+	["haru_quick_action_wheel_mcm"] = 1,
+	["hideout_cat_settings"] = 4,
+	["idiots"] = 12,
+	["item_artefact"] = 2,
+	["item_icon_info"] = 5,
+	["laser_settings"] = 6,
+	["liz_inex"] = 9,
+	["lower_weapon_sprint"] = 6,
+	["magnifier_switch"] = 6,
+	["mark_switch"] = 6,
+	["meat_spoiling"] = 2,
+	["milpda"] = 7,
+	["more_measurement_task_maps"] = 7,
+	["nerfs"] = 7,
+	["new_tasks_addon"] = 7,
+	["npe"] = 13,
+	["npe_module"] = 2,
+	["oleh_sounds"] = 8,
+	["outfitdrop"] = 11,
+	["patches_by_hotkey"] = 13,
+	["pawsys"] = 1,
+	["pda_inter"] = 14,
+	["pda_taskboard"] = 7,
+	["perk_based_artefacts"] = 2,
+	["rad_ai"] = 12,
+	["rad_status_icon_msv"] = 1,
+	["rax_ammo_check"] = 14,
+	["rax_mmt"] = 1,
+	["remember_outfit_belt"] = 5,
+	["reworked_rf_receiver"] = 8,
+	["safespawn"] = 12,
+	["scop"] = 6,
+	["seamless_sort"] = 5,
+	["serious_the_job_can_wait"] = 7,
+	["sidhud"] = 1,
+	["skill_system"] = 2,
+	["smooth_prog"] = 2,
+	["soulslike"] = 2,
+	["speed"] = 2,
+	["ssfx_module"] = 3,
+	["stealth"] = 2,
+	["supgrades"] = 2,
+	["targetID"] = 1,
+	["tmmr"] = 12,
+	["toggle_scope"] = 6,
+	["uas"] = 9,
+	["uicellcontainer_optimize"] = 5,
+	["unusable_parts_handler"] = 5,
+	["varefined"] = 8,
+	["ver_pistol_swap"] = 6,
+	["weapon_cover_tilt"] = 9,
+	["weather_weights_control"] = 11,
+	["wepl_hit_effect"] = 8,
+	["wpo"] = 2,
+	["xlibs"] = 13,
+	["yasc"] = 2,
+	["zone_keeper"] = 13,
+}
+
+local category_by_value = {}
+for i = 1, #category_definitions do
+	category_by_value[category_definitions[i].value] = category_definitions[i]
+end
+category_by_value[UNCATEGORIZED_VALUE] = uncategorized_definition
+
+local function assignment_option_id(group_id)
+	return "assign_" .. group_id
+end
+
+local function category_options()
+	local content = {}
+	for i = 1, #category_definitions do
+		content[#content + 1] = { category_definitions[i].value, category_definitions[i].text }
+	end
+	content[#content + 1] = { uncategorized_definition.value, uncategorized_definition.text }
+	return content
+end
+
+local function organizer_caption(group)
+	local text = game.translate_string(group.text or "ui_mcm_menu_" .. group.id)
+	-- MCM tree captions may contain inline color controls. They are interpreted
+	-- by Sota's option captions but display literally under stock MCM. Organizer
+	-- captions therefore use plain text in both layouts; normal tree colors are
+	-- left unchanged.
+	return (text:gsub("%%c%b[]", ""))
+end
+
+local function read_assignment(group_id)
+	local value = axr_main.config:r_value(CONFIG_SECTION, group_id, 2)
+	return category_by_value[value] or uncategorized_definition
+end
+
+local function remove_assignment(group_id)
+	if not axr_main.config:line_exist(CONFIG_SECTION, group_id) then
+		return
+	end
+	axr_main.config:remove_line(CONFIG_SECTION, group_id)
+	if axr_main.config.cache then
+		axr_main.config.cache[CONFIG_SECTION .. "&" .. group_id] = nil
+	end
+	config_dirty = true
+end
+
+local function get_assignment(group_id)
+	return read_assignment(group_id).value
+end
+
+local function get_default_assignment(group_id)
+	local value = default_assignments[group_id]
+	return value == nil and UNCATEGORIZED_VALUE or value
+end
+
+local function apply_initial_assignments()
+	if axr_main.config:section_exist(CONFIG_SECTION) then
+		return
+	end
+	for group_id, value in pairs(default_assignments) do
+		axr_main.config:w_value(CONFIG_SECTION, group_id, value)
+	end
+	config_dirty = true
+end
+
+local function set_assignment(group_id, value)
+	local definition = category_by_value[tonumber(value)] or uncategorized_definition
+	if definition.value == UNCATEGORIZED_VALUE then
+		remove_assignment(group_id)
+	else
+		axr_main.config:w_value(CONFIG_SECTION, group_id, definition.value)
+		config_dirty = true
+	end
+end
+
+local function redraw_current_page(mcm_ui)
+	if mcm_ui and mcm_ui.last_curr_tree and mcm_ui.last_path then
+		mcm_ui:Reset_opt(mcm_ui.last_curr_tree, mcm_ui.last_path)
+	end
+end
+
+local function stage_clear_all(assignments, mcm_ui)
+	local was_batching = mcm_ui.cmc_batching_cache_updates
+	mcm_ui.cmc_batching_cache_updates = true
+	for i = 1, #assignments do
+		local assignment = assignments[i]
+		mcm_ui:CacheValue(organizer_path(), assignment.id, UNCATEGORIZED_VALUE, assignment)
+	end
+	mcm_ui.cmc_batching_cache_updates = was_batching
+	if not was_batching then
+		mcm_ui:UpdatePending()
+	end
+	redraw_current_page(mcm_ui)
+end
+
+function organizer_path()
+	return MCM_ID .. "/" .. CMC_ID
+end
+
+function page_selector(path)
+	local group_id = type(path) == "string" and path:match("^([^/]+)")
+	if not group_id or group_id == MCM_ID then
+		return
+	end
+	return {
+		id = assignment_option_id(group_id),
+		type = "list",
+		val = 2,
+		def = { get_default_assignment, group_id },
+		content = category_options(),
+		no_str = true,
+		hint = "elseform_cmc_page_category",
+		caption = "ui_mcm_elseform_cmc_page_category",
+		curr = { get_assignment, group_id },
+		functor = { set_assignment, group_id },
+	}
+end
+
+function refresh_assignments(groups)
+	for i = 1, #groups do
+		local group = groups[i]
+		if group.id == MCM_ID then
+			group._elseform_cmc_pinned = true
+			group._elseform_cmc_category = nil
+		else
+			group._elseform_cmc_category = read_assignment(group.id).id
+		end
+	end
+	if config_dirty then
+		axr_main.config:save()
+		config_dirty = false
+	end
+end
+
+function build_organizer(groups)
+	apply_initial_assignments()
+	refresh_assignments(groups)
+	local assignments = {}
+	local content = category_options()
+	local mcm_group = nil
+	for i = 1, #groups do
+		local group = groups[i]
+		if group.id == MCM_ID then
+			mcm_group = group
+		else
+			assignments[#assignments + 1] = {
+				id = assignment_option_id(group.id),
+				type = "list",
+				val = 2,
+				def = { get_default_assignment, group.id },
+				content = content,
+				no_str = true,
+				caption = organizer_caption(group),
+				curr = { get_assignment, group.id },
+				functor = { set_assignment, group.id },
+			}
+		end
+	end
+	table.sort(assignments, function(a, b)
+		return a.caption:lower() < b.caption:lower()
+	end)
+
+	local rows = {
+		{
+			id = "title",
+			type = "title",
+			text = "ui_mcm_elseform_cmc_title",
+		},
+		{
+			id = "description",
+			type = "desc",
+			text = "ui_mcm_elseform_cmc_desc",
+		},
+	}
+	local clear_all_button = {
+		id = "clear_all",
+		type = "button",
+		hint = "elseform_cmc_clear_all",
+	}
+	clear_all_button.functor_ui = {
+		function(mcm_ui)
+			stage_clear_all(assignments, mcm_ui)
+		end,
+	}
+	for i = 1, #assignments do
+		rows[#rows + 1] = assignments[i]
+	end
+	rows[#rows + 1] = { id = "actions_separator", type = "line" }
+	rows[#rows + 1] = clear_all_button
+	rows[#rows + 1] = { id = "bottom_separator", type = "line" }
+
+	if not mcm_group then
+		return
+	end
+	mcm_group.gr[#mcm_group.gr + 1] = {
+		id = CMC_ID,
+		text = "ui_mcm_menu_elseform_cmc",
+		sh = true,
+		gr = rows,
+		clr = { 255, 80, 200, 100 }, -- green
+	}
+end
+
+function category_menu(groups)
+	local counts = {}
+	local mcm_group = nil
+	local total = 0
+	for i = 1, #groups do
+		local group = groups[i]
+		if group._elseform_cmc_pinned then
+			mcm_group = group
+		else
+			local category = group._elseform_cmc_category or uncategorized_definition.id
+			counts[category] = (counts[category] or 0) + 1
+			total = total + 1
+		end
+	end
+	local favorites = category_definitions[1]
+	local result = {}
+	if mcm_group then
+		result[#result + 1] = mcm_group
+	end
+	result[#result + 1] = {
+		id = "elseform_cmc_category_" .. favorites.id,
+		text = favorites.text,
+		_elseform_cmc_virtual_category = favorites.id,
+		_elseform_cmc_category_count = counts[favorites.id] or 0,
+		_elseform_cmc_root_color = { 255, 255, 191, 0 }, -- amber (#FFBF00)
+	}
+	result[#result + 1] = {
+		id = "elseform_cmc_all_mods",
+		text = "ui_mcm_elseform_cmc_category_all",
+		_elseform_cmc_virtual_category = "all",
+		_elseform_cmc_category_count = total,
+		_elseform_cmc_root_color = { 255, 170, 185, 200 }, -- muted blue-gray
+	}
+	for i = 2, #category_definitions do
+		local definition = category_definitions[i]
+		if (counts[definition.id] or 0) > 0 then
+			result[#result + 1] = {
+				id = "elseform_cmc_category_" .. definition.id,
+				text = definition.text,
+				_elseform_cmc_virtual_category = definition.id,
+				_elseform_cmc_category_count = counts[definition.id],
+			}
+		end
+	end
+	if (counts[uncategorized_definition.id] or 0) > 0 then
+		result[#result + 1] = {
+			id = "elseform_cmc_category_" .. uncategorized_definition.id,
+			text = uncategorized_definition.text,
+			_elseform_cmc_virtual_category = uncategorized_definition.id,
+			_elseform_cmc_category_count = counts[uncategorized_definition.id],
+			_elseform_cmc_root_color = { 255, 115, 170, 185 }, -- muted cyan
+		}
+	end
+	return result
+end
+
+function filtered_menu(groups, category, include_pinned)
+	local result = {
+		{
+			id = "elseform_cmc_category_back",
+			text = "ui_mcm_elseform_cmc_category_back",
+			_elseform_cmc_category_back = true,
+		},
+	}
+	for i = 1, #groups do
+		local group = groups[i]
+		local group_category = group._elseform_cmc_category or uncategorized_definition.id
+		if (include_pinned or not group._elseform_cmc_pinned) and (category == "all" or group_category == category) then
+			result[#result + 1] = group
+		end
+	end
+	return result
+end

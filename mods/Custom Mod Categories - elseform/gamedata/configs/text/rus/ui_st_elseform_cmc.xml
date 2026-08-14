@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_elseform_cmc"><text>Настроить категории</text></string>
+	<string id="ui_mcm_elseform_cmc_title"><text>Custom Mod Categories</text></string>
+	<string id="ui_mcm_elseform_cmc_desc"><text>Выберите категорию для каждого мода. «По умолчанию» подставляет встроенные назначения CMC; «Убрать все категории» подготавливает их удаление; «Применить» сохраняет изменения.</text></string>
+	<string id="ui_mcm_elseform_cmc_page_category"><text>Категория</text></string>
+	<string id="ui_mcm_elseform_cmc_page_category_desc"><text>Выберите категорию CMC для этого мода. «Применить» сохраняет изменение; «Сбросить» или «Отменить» отменяет его.</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all"><text>Убрать все категории</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all_desc"><text>Подготовить перевод всех найденных модов в «Без категории». «Применить» сохраняет; «Сбросить» или «Отменить» отменяет изменения.</text></string>
+	<string id="ui_mcm_elseform_cmc_category_favorites"><text>Избранное</text></string>
+	<string id="ui_mcm_elseform_cmc_category_all"><text>Все моды</text></string>
+	<string id="ui_mcm_elseform_cmc_category_back"><text>&lt; Категории</text></string>
+	<string id="ui_mcm_elseform_cmc_category_ui"><text>Интерфейс</text></string>
+	<string id="ui_mcm_elseform_cmc_category_gameplay"><text>Игровой процесс</text></string>
+	<string id="ui_mcm_elseform_cmc_category_graphics"><text>Графика</text></string>
+	<string id="ui_mcm_elseform_cmc_category_crafting"><text>Крафт и ремонт</text></string>
+	<string id="ui_mcm_elseform_cmc_category_inventory"><text>Предметы и инвентарь</text></string>
+	<string id="ui_mcm_elseform_cmc_category_weapons"><text>Оружие</text></string>
+	<string id="ui_mcm_elseform_cmc_category_pda"><text>КПК и задания</text></string>
+	<string id="ui_mcm_elseform_cmc_category_audio"><text>Звук</text></string>
+	<string id="ui_mcm_elseform_cmc_category_animation"><text>Анимации</text></string>
+	<string id="ui_mcm_elseform_cmc_category_controls"><text>Управление и камера</text></string>
+	<string id="ui_mcm_elseform_cmc_category_world"><text>Мир и окружение</text></string>
+	<string id="ui_mcm_elseform_cmc_category_ai"><text>ИИ и NPC</text></string>
+	<string id="ui_mcm_elseform_cmc_category_system"><text>Система и утилиты</text></string>
+	<string id="ui_mcm_elseform_cmc_category_other"><text>Другое</text></string>
+	<string id="ui_mcm_elseform_cmc_category_uncategorized"><text>Без категории</text></string>
+</string_table>

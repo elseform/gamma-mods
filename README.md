@@ -16,6 +16,7 @@ This permission covers my original work only. Third-party code and assets keep t
 
 ## Standalone mods
 
+### [Custom Mod Categories (CMC)](<mods/Custom Mod Categories - elseform/README.md>)
 ### [Flashing Inventory Highlights (FIH)](<mods/Flashing Inventory Highlights - elseform/README.md>)
 ### [It's Time To Stop (ITTS)](<mods/Its Time To Stop - elseform/README.md>)
 ### [Inspect Weapon Hotkey](<mods/Inspect Weapon Hotkey - elseform/README.md>)

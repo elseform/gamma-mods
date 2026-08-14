@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<string_table>
+	<string id="ui_mcm_menu_elseform_cmc"><text>Organize mods</text></string>
+	<string id="ui_mcm_elseform_cmc_title"><text>Custom Mod Categories</text></string>
+	<string id="ui_mcm_elseform_cmc_desc"><text>Choose a category for each mod. Default stages CMC's built-in assignments; Clear all categories stages their removal; Apply saves changes.</text></string>
+	<string id="ui_mcm_elseform_cmc_page_category"><text>Category</text></string>
+	<string id="ui_mcm_elseform_cmc_page_category_desc"><text>Choose a CMC category for this mod. Apply saves the change; Reset or Cancel discards it.</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all"><text>Clear all categories</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all_desc"><text>Stage every discovered mod as Uncategorized. Apply saves; Reset or Cancel discards the staged changes.</text></string>
+	<string id="ui_mcm_elseform_cmc_category_favorites"><text>Favorites</text></string>
+	<string id="ui_mcm_elseform_cmc_category_all"><text>All mods</text></string>
+	<string id="ui_mcm_elseform_cmc_category_back"><text>&lt; Categories</text></string>
+	<string id="ui_mcm_elseform_cmc_category_ui"><text>UI</text></string>
+	<string id="ui_mcm_elseform_cmc_category_gameplay"><text>Gameplay</text></string>
+	<string id="ui_mcm_elseform_cmc_category_graphics"><text>Graphics</text></string>
+	<string id="ui_mcm_elseform_cmc_category_crafting"><text>Crafting</text></string>
+	<string id="ui_mcm_elseform_cmc_category_inventory"><text>Inventory</text></string>
+	<string id="ui_mcm_elseform_cmc_category_weapons"><text>Weapons</text></string>
+	<string id="ui_mcm_elseform_cmc_category_pda"><text>PDA &amp; Tasks</text></string>
+	<string id="ui_mcm_elseform_cmc_category_audio"><text>Audio</text></string>
+	<string id="ui_mcm_elseform_cmc_category_animation"><text>Animations</text></string>
+	<string id="ui_mcm_elseform_cmc_category_controls"><text>Controls &amp; Camera</text></string>
+	<string id="ui_mcm_elseform_cmc_category_world"><text>World &amp; Environment</text></string>
+	<string id="ui_mcm_elseform_cmc_category_ai"><text>AI &amp; NPCs</text></string>
+	<string id="ui_mcm_elseform_cmc_category_system"><text>System</text></string>
+	<string id="ui_mcm_elseform_cmc_category_other"><text>Other</text></string>
+	<string id="ui_mcm_elseform_cmc_category_uncategorized"><text>Uncategorized</text></string>
+</string_table>

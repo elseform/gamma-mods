@@ -3,6 +3,7 @@
   <Name>It's Time To Stop - elseform</Name>
   <Author>elseform</Author>
   <Version>1.1.1</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases/latest</Website>
   <Description>Real-time HUD clock, playtime statistics, and optional session reminders.</Description>
   <Groups>
     <element>Utilities</element>
