@@ -1,4 +1,4 @@
-# D3DMetal Fix - Glossy Puddles - Metal Loop Guards
+# D3DMetal - [Glossy Puddles] - POM Loop Guards
 
 Bounds the two unbounded terrain parallax-occlusion loops in Glossy Puddles'
 terrain shader so they cannot hang the GPU under **D3DMetal / DXMT** (macOS /

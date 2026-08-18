@@ -16,10 +16,10 @@ This permission covers my original work only. Third-party code and assets keep t
 
 ## Standalone mods
 
-### [Custom Mod Categories (CMC)](<mods/Custom Mod Categories - elseform/README.md>)
-### [Flashing Inventory Highlights (FIH)](<mods/Flashing Inventory Highlights - elseform/README.md>)
-### [It's Time To Stop (ITTS)](<mods/Its Time To Stop - elseform/README.md>)
-### [Inspect Weapon Hotkey](<mods/Inspect Weapon Hotkey - elseform/README.md>)
+### [Custom Mod Categories (CMC)](<authored/Custom Mod Categories - elseform/README.md>)
+### [Flashing Inventory Highlights (FIH)](<authored/Flashing Inventory Highlights - elseform/README.md>)
+### [It's Time To Stop (ITTS)](<authored/Its Time To Stop - elseform/README.md>)
+### [Inspect Weapon Hotkey](<authored/Inspect Weapon Hotkey - elseform/README.md>)
 
 ## D3DMetal compatibility
 
@@ -28,6 +28,6 @@ Silicon. Each entry is named for the source mods it was built against and states
 the exact source versions in its own README. Clear `appdata/shaders_cache/`
 after installing or updating any of them.
 
-### [D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics](<d3dmetal-compat/D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics/README.md>)
-### [D3DMetal Fix - Glossy Puddles - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Glossy Puddles - Metal Loop Guards/README.md>)
-### [D3DMetal Fix - Screen Space Shaders - Metal Loop Guards](<d3dmetal-compat/D3DMetal Fix - Screen Space Shaders - Metal Loop Guards/README.md>)
+### [D3DMetal - [SSS23] [3DSS4] - Optics](<d3dmetal/D3DMetal - [SSS23] [3DSS4] - Optics/README.md>)
+### [D3DMetal - [Glossy Puddles] - POM Loop Guards](<d3dmetal/D3DMetal - [Glossy Puddles] - POM Loop Guards/README.md>)
+### [D3DMetal - [SSS23] - POM Loop Guards](<d3dmetal/D3DMetal - [SSS23] - POM Loop Guards/README.md>)

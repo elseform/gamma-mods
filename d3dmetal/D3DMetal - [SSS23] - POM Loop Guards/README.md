@@ -1,4 +1,4 @@
-# D3DMetal Fix - Screen Space Shaders - Metal Loop Guards
+# D3DMetal - [SSS23] - POM Loop Guards
 
 Bounds the two unbounded parallax-occlusion loops in Screen Space Shaders'
 `sload.h` so they cannot hang the GPU under **D3DMetal / DXMT** (macOS / Apple

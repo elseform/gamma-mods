@@ -1,4 +1,4 @@
-# D3DMetal Fix - 3DSS, BaS, Mark Switch - Optics
+# D3DMetal - [SSS23] [3DSS4] - Optics
 
 Fixes broken scope, sight, and night/thermal-vision rendering when STALKER
 GAMMA runs through **D3DMetal / DXMT** (macOS / Apple Silicon via GPTK and
