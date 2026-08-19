@@ -81,7 +81,9 @@ void HeightBlending(float4 heights, inout float4 weights)
 	heights = max(heights - H_weights, 0.0f) * weights;
 
 	// Normalize
-	weights.rgba = heights / dot(heights, 1.0f);
+	// [elseform] Guard against division by zero when all height weights are cut below threshold.
+	float sum_h = dot(heights, 1.0f);
+	weights.rgba = sum_h > 1e-5f ? (heights / sum_h) : float4(1.0f, 0.0f, 0.0f, 0.0f);
 }
 
 
