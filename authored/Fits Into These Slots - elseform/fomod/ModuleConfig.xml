@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Fits Into These Slots</moduleName>
+  <requiredInstallFiles>
+    <file source="meta.ini" destination="meta.ini" />
+    <file source="README.md" destination="README.md" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install Fits Into These Slots">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Fits Into These Slots">
+              <description>Lets whitelisted weapons be right-clicked into the pistol or binoculars slot, with MCM checkboxes to show/hide the two right-click options.</description>
+              <files>
+                <folder source="gamedata" destination="gamedata" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_elseform_ees_allow_pistol">
+		<text>%c[pda_blue]allow pistol slot</text>
+	</string>
+	<string id="st_elseform_ees_disallow_pistol">
+		<text>%c[pda_blue]disallow pistol slot</text>
+	</string>
+	<string id="st_elseform_ees_allow_binoc">
+		<text>%c[pda_blue]allow binoculars slot</text>
+	</string>
+	<string id="st_elseform_ees_disallow_binoc">
+		<text>%c[pda_blue]disallow binoculars slot</text>
+	</string>
+	<string id="st_elseform_ees_menu">
+		<text>%c[pda_blue]allow extra slot</text>
+	</string>
+	<string id="ui_mcm_menu_elseform_ees">
+		<text>%c[pda_blue]FITS</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_title">
+		<text>Fits Into These Slots</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_desc">
+		<text>Right-click a weapon in inventory to allow it into the pistol or binoculars slot. These checkboxes only control the right-click option itself - whether it is shown and whether it is colored; they do not enable or disable weapons already allowed.</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_show_menu_toggle">
+		<text>Show "allow extra slot" option</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_colored_menu_text">
+		<text>Colored menu option</text>
+	</string>
+</string_table>

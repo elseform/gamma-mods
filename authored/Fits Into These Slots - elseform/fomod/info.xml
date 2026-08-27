@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>Fits Into These Slots - elseform</Name>
+  <Author>elseform</Author>
+  <Version>1.0.0</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases/latest</Website>
+  <Description>Right-click a weapon to allow it into the pistol or binoculars slot; MCM checkboxes show/hide the two right-click options.</Description>
+  <Groups>
+    <element>Utilities</element>
+  </Groups>
+</fomod>

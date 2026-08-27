@@ -1,0 +1,77 @@
+--[[
+Fits Into These Slots - elseform: MCM
+
+Two cosmetic checkboxes. The first shows/hides the single "allow extra
+slot" right-click entry (and its pistol/binoc submenu) in
+zzzz_elseform_ees_slots.script; the second controls whether that entry and
+its submenu render in the mod's purple or in the default context-menu
+color. Both toggles used to have their own
+checkbox back when they were separate top-level entries; folded into one
+now that the right-click menu itself is folded into one entry. Doesn't
+enable or disable the slot allowance itself — a weapon already toggled on
+via the ltx keeps working in its extra slot even with the menu hidden here.
+
+Author: elseform, 2026
+--]]
+
+local cache = {}
+
+local function get_config(path, default)
+	local value = cache[path]
+	if value ~= nil then
+		return value
+	end
+
+	value = default
+	if ui_mcm then
+		local stored = ui_mcm.get(path)
+		if stored ~= nil then
+			value = stored
+		end
+	end
+
+	cache[path] = value
+	return value
+end
+
+local function flush_cache()
+	empty_table(cache)
+end
+
+function on_game_start()
+	flush_cache()
+	RegisterScriptCallback("on_option_change", flush_cache)
+end
+
+function is_menu_visible()
+	return get_config("elseform_ees/show_menu_toggle", true)
+end
+
+function is_menu_colored()
+	return get_config("elseform_ees/colored_menu_text", true)
+end
+
+function on_mcm_load()
+	return {
+		id = "elseform_ees",
+		sh = true,
+		text = "ui_mcm_menu_elseform_ees",
+		gr = {
+			{
+				id = "title",
+				type = "slide",
+				link = "ui_options_slider_player",
+				text = "ui_mcm_elseform_ees_title",
+				size = {512, 50},
+				spacing = 20,
+			},
+			{
+				id = "desc",
+				type = "desc",
+				text = "ui_mcm_elseform_ees_desc",
+			},
+			{ id = "show_menu_toggle", type = "check", val = 1, def = true },
+			{ id = "colored_menu_text", type = "check", val = 1, def = true },
+		}
+	}
+end

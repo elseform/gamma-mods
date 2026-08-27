@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_elseform_ees_allow_pistol">
+		<text>%c[pda_blue]��������� ���� ���������</text>
+	</string>
+	<string id="st_elseform_ees_disallow_pistol">
+		<text>%c[pda_blue]��������� ���� ���������</text>
+	</string>
+	<string id="st_elseform_ees_allow_binoc">
+		<text>%c[pda_blue]��������� ���� �������</text>
+	</string>
+	<string id="st_elseform_ees_disallow_binoc">
+		<text>%c[pda_blue]��������� ���� �������</text>
+	</string>
+	<string id="st_elseform_ees_menu">
+		<text>%c[pda_blue]��������� ���. ����</text>
+	</string>
+	<string id="ui_mcm_menu_elseform_ees">
+		<text>%c[pda_blue]FITS</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_title">
+		<text>Fits Into These Slots</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_desc">
+		<text>������ ���� �� ������ � ��������� ��������� ��� � ���� ��������� ��� �������. ��� ������� ��������� ������ ����� ������� ���� - ������� � ������; ��� �� �������� � �� ��������� ��� ����������� ������.</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_show_menu_toggle">
+		<text>���������� ����� "��������� ���. ����"</text>
+	</string>
+	<string id="ui_mcm_elseform_ees_colored_menu_text">
+		<text>���������� ����� "��������� ���. ����" � ����������</text>
+	</string>
+</string_table>

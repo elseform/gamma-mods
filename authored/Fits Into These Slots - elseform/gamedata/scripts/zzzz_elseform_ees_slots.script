@@ -1,0 +1,554 @@
+--[[
+Fits Into These Slots (FITS) - elseform
+
+Lets specific weapons be equipped into the pistol slot (base slot 2) or the
+binoculars slot (base slot 5), on top of whatever their own `.ltx slot=`
+already allows. No manual weapon-name lookup: right-click any eligible
+weapon in inventory for an "Allow: Pistol Slot" / "Allow: Binoculars Slot"
+toggle (custom_functor_autoinject.script, the same right-click-action API
+Neat Usability Tweaks uses), which writes the choice straight into
+gamedata/configs/plugins/zzzz_elseform_ees_slots.ltx. CScriptIniFile's w_*
+wrappers all require the target line to already exist (THROW3 in
+script_ini_file.cpp otherwise), so a brand-new weapon entry can't go through
+them; the toggle instead rewrites the ltx directly via io.open, same pattern
+ape_mcm.script already uses. CInifile also caches parsed file content by
+filename and only its own save_as() invalidates that cache - reconstructing
+ini_ees after an io.open write just hands back the stale pre-write data - so
+the allow-lists live in plain Lua tables for the whole session (loaded once
+from ini_ees at startup) and io.open is only used to persist to disk for the
+next launch. The ltx stays hand-editable too; the toggle is just a faster
+way to populate it.
+
+The toggle only appears on weapons that are not already default-eligible for
+the target slot (own base slot already == 2 for pistol / 5 for binoc), so
+already-eligible pistols/binoculars never need an entry.
+
+Loads late (zzzz_ prefix) so ui_inventory.script's UIInventory class already
+exists to chain-wrap. base_engine/inventory_space.h has no per-slot
+item-class restriction beyond helmet/backpack outfit checks. Action_Equip
+(ui_inventory.script:2253, used by hotkey/context-menu equip and the
+drag/drop branches at :4432/:4667), the "Ruck/Slot to Slot" branch of
+On_CC_DragDrop (:4403, does its own db.actor:move_to_slot without ever
+calling Action_Equip), and the hover-highlight block in On_CC_Hover (:4577)
+all independently read self.slot_cell[item's own base slot] to find/highlight
+candidate cells, so each needed its own patch. All three wrap self.slot_cell
+temporarily (see with_extra_cell) so the extra cells are per-item, not opened
+up to every weapon sharing that base slot. A weapon can be allowed for both
+pistol and binoc at once (extra_cells_for returns a list, not a single cell).
+
+Author: elseform, 2026
+--]]
+
+local EES_DEBUG = false
+
+local function dbg(...)
+	if EES_DEBUG then
+		printf(...)
+	end
+end
+
+local PISTOL_BASE_SLOT = 2
+local BINOC_BASE_SLOT = 5
+local BOLT_SLOT = 6
+local DETECTOR_SLOT = 9
+local NO_ACTIVE_SLOT = 0
+local ALLOW_PISTOL_SECTION = "allow_pistol_slot"
+local ALLOW_BINOC_SECTION = "allow_binoc_slot"
+
+local EES_LTX_REL_PATH = "plugins\\zzzz_elseform_ees_slots.ltx"
+
+-- CInifile caches parsed file content by filename (Xr_ini.cpp, dltx_use_cache)
+-- and only its own save_as() invalidates that cache on write. w_* wrappers
+-- also THROW3 if the target line doesn't already exist (script_ini_file.cpp),
+-- so they can't create a first-ever toggle either way. So: read the ltx via
+-- ini_ees exactly once at load, keep the allow-lists in plain Lua tables for
+-- the rest of the session (is_allowed never touches ini_ees again), and only
+-- use io.open to persist to disk for the *next* launch - re-constructing
+-- ini_ees mid-session would just hand back the stale pre-write cache.
+local ini_ees = ini_file(EES_LTX_REL_PATH)
+
+local function load_allowed_set(ini_section)
+	local set = {}
+	if ini_ees:section_exist(ini_section) then
+		for i = 0, ini_ees:line_count(ini_section) - 1 do
+			local ok, key = ini_ees:r_line(ini_section, i, "", "")
+			if ok and key and key ~= "" then
+				set[key] = true
+			end
+		end
+	end
+	return set
+end
+
+local allowed_sets = {
+	[ALLOW_PISTOL_SECTION] = load_allowed_set(ALLOW_PISTOL_SECTION),
+	[ALLOW_BINOC_SECTION] = load_allowed_set(ALLOW_BINOC_SECTION),
+}
+
+local function is_allowed(section, ini_section)
+	return allowed_sets[ini_section][section] == true
+end
+
+local function write_ees_ltx()
+	local content = "; Fits Into These Slots - elseform\n" ..
+		"; Managed automatically by zzzz_elseform_ees_slots.script (right-click toggle).\n" ..
+		"; Hand-editing still works: section key is the weapon's item section, value unused.\n\n" ..
+		"[" .. ALLOW_PISTOL_SECTION .. "]\n"
+	for key in pairs(allowed_sets[ALLOW_PISTOL_SECTION]) do
+		content = content .. key .. "\n"
+	end
+	content = content .. "\n[" .. ALLOW_BINOC_SECTION .. "]\n"
+	for key in pairs(allowed_sets[ALLOW_BINOC_SECTION]) do
+		content = content .. key .. "\n"
+	end
+
+	local path = getFS():update_path("$game_config$", "") .. EES_LTX_REL_PATH
+	local f = io.open(path, "w")
+	if not f then
+		printf("[EES] write_ees_ltx: FAILED to open %s for writing", path)
+		return
+	end
+	f:write(content)
+	f:close()
+	dbg("[EES] write_ees_ltx: wrote %s", path)
+end
+
+local function set_allowed(section, ini_section, allowed)
+	dbg("[EES] set_allowed: section=%s ini_section=%s allowed=%s", section, ini_section, tostring(allowed))
+
+	if allowed then
+		allowed_sets[ini_section][section] = true
+	else
+		allowed_sets[ini_section][section] = nil
+	end
+
+	write_ees_ltx()
+
+	dbg("[EES] set_allowed: after write is_allowed(%s, %s) = %s", section, ini_section, tostring(is_allowed(section, ini_section)))
+end
+
+-- section -> base_slot is static for the whole session (ltx doesn't change
+-- at runtime), but On_CC_Hover calls this on every mouse-move over the
+-- inventory - memoize instead of re-parsing the ini on every hover tick.
+local base_slot_cache = {}
+
+local function base_slot_of(section)
+	local slot = base_slot_cache[section]
+	if slot == nil then
+		slot = (SYS_GetParam(2, section, "slot") or -1) + 1
+		base_slot_cache[section] = slot
+	end
+	return slot
+end
+
+------------------------------------------------------------------------------
+-- Action_Equip: extend the target slot's candidate cells for allowed items
+------------------------------------------------------------------------------
+
+-- Action_Equip looks up self.slot_cell[item's own natural base slot] to find
+-- candidate cells, not self.slot_cell[target base slot] - so the extra cells
+-- have to be appended to the item's OWN slot's cell list, not the pistol/binoc
+-- slot's cell list. A weapon can be allowed for BOTH pistol and binoc at
+-- once, so this returns a list, not a single cell.
+--
+-- The extra cells are read from self.slot_cell[PISTOL_BASE_SLOT] /
+-- [BINOC_BASE_SLOT] at call time instead of a hardcoded cell number: pistol's
+-- own cell list is {2,1,3}, not just {2} (ui_inventory.script:558), and this
+-- pack's UI resolves "the pistol slot icon" to cell 1, not 2 - confirmed via
+-- [EES] logging showing every drop attempt landing on idx_to=1 and never
+-- matching a hardcoded PISTOL_CELL=2. Pulling the real list sidesteps having
+-- to guess which cell number a given UI skin renders as which icon.
+local function extra_cells_for(self, section)
+	local pistol_ok = is_allowed(section, ALLOW_PISTOL_SECTION)
+	local binoc_ok = is_allowed(section, ALLOW_BINOC_SECTION)
+	-- Almost every hovered/equipped item is in neither allow-list - check the
+	-- cheap table lookups before paying for base_slot_of's ini lookup.
+	if not pistol_ok and not binoc_ok then
+		if EES_DEBUG then
+			dbg("[EES] extra_cells_for: section=%s -> nil (not in either allow-list)", section)
+		end
+		return nil
+	end
+
+	local own_slot = base_slot_of(section)
+	if EES_DEBUG then
+		dbg("[EES] extra_cells_for: section=%s own_slot=%s pistol_allowed=%s binoc_allowed=%s", section, tostring(own_slot), tostring(pistol_ok), tostring(binoc_ok))
+	end
+
+	local cells = {}
+	if own_slot ~= PISTOL_BASE_SLOT and pistol_ok then
+		local pistol_cells = self.slot_cell[PISTOL_BASE_SLOT] or {}
+		for i = 1, #pistol_cells do
+			cells[#cells + 1] = pistol_cells[i]
+		end
+	end
+	if own_slot ~= BINOC_BASE_SLOT and binoc_ok then
+		local binoc_cells = self.slot_cell[BINOC_BASE_SLOT] or {}
+		for i = 1, #binoc_cells do
+			cells[#cells + 1] = binoc_cells[i]
+		end
+	end
+	if is_empty(cells) then
+		if EES_DEBUG then
+			dbg("[EES] extra_cells_for: -> nil (no extra cells)")
+		end
+		return nil
+	end
+	if EES_DEBUG then
+		dbg("[EES] extra_cells_for: -> base_slot=%s extra_cells={%s}", tostring(own_slot), table.concat(cells, ","))
+	end
+	return own_slot, cells
+end
+
+-- Runs fn() with self.slot_cell[base_slot] temporarily carrying extra_cells,
+-- restored right after (synchronous call, no yields in between) so the
+-- whitelist stays per-item instead of opening the cell to every weapon that
+-- shares the same base slot.
+local function with_extra_cell(self, section, fn)
+	local base_slot, extra_cells = extra_cells_for(self, section)
+	if not base_slot then
+		fn()
+		return
+	end
+
+	local saved_cells = self.slot_cell[base_slot] or {}
+	local patched_cells = {}
+	for i = 1, #saved_cells do
+		patched_cells[i] = saved_cells[i]
+	end
+	for i = 1, #extra_cells do
+		patched_cells[#patched_cells + 1] = extra_cells[i]
+	end
+	self.slot_cell[base_slot] = patched_cells
+	if EES_DEBUG then
+		dbg("[EES] with_extra_cell: patched slot_cell[%s] = {%s} -> {%s}", tostring(base_slot), table.concat(saved_cells, ","), table.concat(patched_cells, ","))
+	end
+
+	-- fn() can throw (engine equip/drag/hover paths do on bad state) - restore
+	-- slot_cell before propagating instead of leaving the base slot patched
+	-- open for the rest of the session.
+	local ok, err = pcall(fn)
+
+	self.slot_cell[base_slot] = saved_cells
+	if EES_DEBUG then
+		dbg("[EES] with_extra_cell: restored slot_cell[%s]", tostring(base_slot))
+	end
+
+	if not ok then
+		error(err, 0)
+	end
+end
+
+local Original_Action_Equip = ui_inventory.UIInventory.Action_Equip
+
+ui_inventory.UIInventory.Action_Equip = function(self, obj, bag)
+	-- Context-menu (right-click) equip calls Action_Equip with obj as a raw
+	-- object id (number), not a game object - ui_inventory.script's generic
+	-- property dispatcher does `self[func_action[1]](self, id, bag, ...)`
+	-- (ui_inventory.script:3379), unlike the double-click path which already
+	-- passes a real object. Every other Action_Equip patch (base engine,
+	-- zzzz_liz_fdda_redone_ui_inventory.script) calls self:CheckItem() first
+	-- to resolve that id; this one has to too, or obj:section() below throws
+	-- "attempt to index local 'obj' (a number value)" on right-click equip.
+	obj = self:CheckItem(obj, "Action_Equip")
+	dbg("[EES] Action_Equip: obj=%s bag=%s", obj and obj:section() or "nil", tostring(bag))
+	if not obj then
+		Original_Action_Equip(self, obj, bag)
+		return
+	end
+	with_extra_cell(self, obj:section(), function()
+		Original_Action_Equip(self, obj, bag)
+	end)
+end
+
+-- On_CC_DragDrop's "Ruck/Slot to Slot" branch (ui_inventory.script:~4403)
+-- reads self.slot_cell[slot] directly and moves the item itself - it does
+-- NOT call Action_Equip, so dragging a weapon onto the pistol/binoc slot
+-- icon never went through the patch above.
+local Original_On_CC_DragDrop = ui_inventory.UIInventory.On_CC_DragDrop
+
+ui_inventory.UIInventory.On_CC_DragDrop = function(self, bag_from, idx_from)
+	local cc = self.CC[bag_from]
+	local obj_from = cc and cc:GetObj(idx_from)
+	dbg("[EES] On_CC_DragDrop: bag_from=%s idx_from=%s obj_from=%s", tostring(bag_from), tostring(idx_from), obj_from and obj_from:section() or "nil")
+	if not obj_from then
+		Original_On_CC_DragDrop(self, bag_from, idx_from)
+		return
+	end
+
+	-- Diagnostic only, mirrors the focused-cell lookup at the top of
+	-- On_CC_DragDrop (ui_inventory.script:4384) - doesn't change behavior,
+	-- just tells us exactly what bag_to/idx_to the game resolved the drop
+	-- to, so we can tell a bad target cell from a bad slot_cell patch.
+	local idx_to
+	if EES_DEBUG then
+		local bag_to, obj_to
+		for _, dcc in pairs(self.CC) do
+			bag_to, idx_to, obj_to = dcc:GetCell_Focused()
+			if bag_to then break end
+		end
+		dbg("[EES] On_CC_DragDrop: resolved drop target bag_to=%s idx_to=%s obj_to=%s", tostring(bag_to), tostring(idx_to), obj_to and obj_to:section() or "nil")
+	end
+
+	with_extra_cell(self, obj_from:section(), function()
+		Original_On_CC_DragDrop(self, bag_from, idx_from)
+	end)
+
+	if EES_DEBUG then
+		local equ = self.CC["actor_equ"]
+		local now_in_slot = equ and idx_to and equ:GetObj(idx_to)
+		dbg("[EES] On_CC_DragDrop: after call, actor_equ[%s] holds %s", tostring(idx_to), now_in_slot and now_in_slot:section() or "nothing")
+	end
+end
+
+-- On_CC_Hover's "Highlight compatible items" block (ui_inventory.script:~4577)
+-- also reads self.slot_cell[slot] directly to decide which equip-slot icons
+-- light up while dragging - same gap as On_CC_DragDrop, so hovering a
+-- whitelisted weapon over the inventory only highlighted its natural slot.
+local Original_On_CC_Hover = ui_inventory.UIInventory.On_CC_Hover
+
+ui_inventory.UIInventory.On_CC_Hover = function(self, bag, idx)
+	local cc = bag and self.CC[bag]
+	local obj = cc and idx and cc:GetObj(idx)
+	if not obj then
+		Original_On_CC_Hover(self, bag, idx)
+		return
+	end
+
+	with_extra_cell(self, obj:section(), function()
+		Original_On_CC_Hover(self, bag, idx)
+	end)
+end
+
+------------------------------------------------------------------------------
+-- Right-click toggle: no weapon-name lookup required
+------------------------------------------------------------------------------
+
+-- The context-menu strings carry their color inline (`%c[pda_blue]` in the
+-- locale xml), so the only way to render them uncolored is to hand the UI
+-- text without that prefix. UICellProperties:AddItemToList runs
+-- game.translate_string on whatever the name functor returns
+-- (utils_ui.script:3518) and that call passes text it has no entry for
+-- straight through, so returning an already-translated, prefix-stripped
+-- string is safe and renders in the default context-menu color.
+local plain_menu_text_cache = {}
+
+local function menu_text(str_id)
+	if zzzz_elseform_ees_mcm.is_menu_colored() then
+		return str_id
+	end
+
+	local plain = plain_menu_text_cache[str_id]
+	if not plain then
+		plain = game.translate_string(str_id):gsub("%%c%[[^%]]*%]", "")
+		plain_menu_text_cache[str_id] = plain
+	end
+	return plain
+end
+
+local function is_weapon(obj)
+	if not obj or not obj.cast_Weapon then return false end
+	local ok, weapon = pcall(obj.cast_Weapon, obj)
+	return ok and weapon ~= nil
+end
+
+local function make_toggle(ini_section, target_base_slot, allow_str, disallow_str, is_menu_visible)
+	local function cond(obj, bag, mode)
+		if mode ~= "inventory" then return false end
+		if not is_menu_visible() then
+			dbg("[EES] cond(%s): menu hidden by MCM", ini_section)
+			return false
+		end
+		if not is_weapon(obj) then
+			dbg("[EES] cond(%s): obj=%s not recognized as weapon", ini_section, obj and obj:section() or "nil")
+			return false
+		end
+		local section = obj:section()
+		local own_slot = base_slot_of(section)
+		local result = own_slot ~= target_base_slot
+		if EES_DEBUG then
+			dbg("[EES] cond(%s): obj=%s own_slot=%s target_slot=%s -> %s", ini_section, section, tostring(own_slot), tostring(target_base_slot), tostring(result))
+		end
+		return result
+	end
+
+	local function name(obj, bag, mode)
+		return menu_text(is_allowed(obj:section(), ini_section) and disallow_str or allow_str)
+	end
+
+	local function action(obj, bag, mode)
+		local section = obj:section()
+		dbg("[EES] action(%s): toggle clicked for %s", ini_section, section)
+		set_allowed(section, ini_section, not is_allowed(section, ini_section))
+	end
+
+	return cond, name, action
+end
+
+-- Menu visibility only hides/shows the right-click option (one MCM checkbox
+-- in zzzz_elseform_ees_mcm.script, covering both toggles now that they share
+-- a single top-level entry). It never touches ini_ees, so a weapon already
+-- toggled on keeps its extra slot regardless of menu visibility.
+local function is_menu_visible() return zzzz_elseform_ees_mcm.is_menu_visible() end
+
+local pistol_cond, pistol_name, pistol_action = make_toggle(
+	ALLOW_PISTOL_SECTION, PISTOL_BASE_SLOT,
+	"st_elseform_ees_allow_pistol", "st_elseform_ees_disallow_pistol",
+	is_menu_visible
+)
+local binoc_cond, binoc_name, binoc_action = make_toggle(
+	ALLOW_BINOC_SECTION, BINOC_BASE_SLOT,
+	"st_elseform_ees_allow_binoc", "st_elseform_ees_disallow_binoc",
+	is_menu_visible
+)
+
+-- Both toggles used to be separate top-level right-click entries; folded into
+-- one "Extra Equip Slot" entry that opens a UICellPropertiesCustom popup
+-- (utils_ui_custom.script) listing only the toggle(s) this item is actually
+-- eligible for - same pattern zzzzz_elseform_nut_maintenance.script uses for
+-- its "clean all parts" list (init_maintenance_menu/UICellPropertiesCustom).
+-- The popup's functor is called with the item's params unpacked
+-- (UICellPropertiesCustom:OnListItemDbClicked), so action/params just need
+-- to carry which allow-list section to flip.
+local ees_menu_gui
+local ees_menu_snd
+
+local function ees_menu_dispatch(section, ini_section)
+	set_allowed(section, ini_section, not is_allowed(section, ini_section))
+end
+
+local function ees_menu_cond(obj, bag, mode)
+	return pistol_cond(obj, bag, mode) or binoc_cond(obj, bag, mode)
+end
+
+local function ees_menu_name(obj, bag, mode)
+	return menu_text("st_elseform_ees_menu")
+end
+
+local function ees_menu_action(obj, bag, mode)
+	local section = obj:section()
+	local context_str, context_action, context_params = {}, {}, {}
+	local n = 0
+
+	if pistol_cond(obj, bag, mode) then
+		n = n + 1
+		context_str[n] = pistol_name(obj, bag, mode)
+		context_action[n] = true
+		context_params[n] = {section, ALLOW_PISTOL_SECTION}
+	end
+	if binoc_cond(obj, bag, mode) then
+		n = n + 1
+		context_str[n] = binoc_name(obj, bag, mode)
+		context_action[n] = true
+		context_params[n] = {section, ALLOW_BINOC_SECTION}
+	end
+
+	if not ees_menu_gui then
+		ees_menu_gui = utils_ui_custom.UICellPropertiesCustom(ees_menu_dispatch)
+	end
+	ees_menu_gui:Reset(GetCursorPosition(), context_action, context_str, context_params)
+
+	if not ees_menu_snd then
+		ees_menu_snd = sound_object([[interface\inv_properties_2]])
+	end
+	ui_inventory.GUI:PlaySND(ees_menu_snd)
+end
+
+custom_functor_autoinject.add_functor("elseform_ees_menu", ees_menu_cond, ees_menu_name, ees_menu_cond, ees_menu_action)
+
+------------------------------------------------------------------------------
+-- Detector compatibility
+------------------------------------------------------------------------------
+
+-- CCustomDevice::CheckCompatibilityInt chooses a fallback from the active
+-- inventory slots using the item's immutable BaseSlot. EES changes CurrSlot,
+-- so that native search can select the EES slot itself and leave the detector
+-- pending until some later weapon switch. Own this one exceptional sequence:
+-- consume the native detector press, switch to the bolt, then show the
+-- detector only after CInventory finishes its deferred slot transition.
+local DETECTOR_EVENT_ID = "elseform_ees"
+local DETECTOR_EVENT_ACTION = "show_detector_after_fallback"
+local detector_switch
+
+local function finish_detector_switch()
+	local pending = detector_switch
+	local actor = db.actor
+	if not pending or not actor then
+		detector_switch = nil
+		return true
+	end
+
+	if time_global() >= pending.deadline then
+		detector_switch = nil
+		return true
+	end
+
+	local active_slot = actor:active_slot()
+	if active_slot == pending.target_slot then
+		-- One show_detector() call on the frame CInventory flips m_iActiveSlot
+		-- is not enough. CInventory::Update calls ActivateItem() on the target
+		-- item and updates m_iActiveSlot in the same pass (inventory.cpp:862-871),
+		-- but CHudItem::SwitchState only queues the state change through a
+		-- GE_WPN_STATE_CHANGE event (HudItem.cpp:147), so on that frame the
+		-- target item still reports eHidden with fl_pending set. That makes
+		-- CheckCompatibilityInt's `bres = bres && !itm->IsPending()` branch
+		-- (CustomDevice.cpp:56-57) reject it, and ToggleDevice returns without
+		-- setting m_bNeedActivation, so nothing ever retries and the detector
+		-- stays down until the next key press. Keep asking until the device is
+		-- actually up (show_device is a no-op once it is) or the deadline hits.
+		pending.reached = true
+		actor:show_detector(true)
+		if actor:active_detector() then
+			detector_switch = nil
+			return true
+		end
+		return false
+	end
+
+	-- CInventory keeps reporting the source slot while its hide animation is
+	-- pending. Any other slot means another input superseded this request.
+	if not pending.reached and active_slot ~= pending.source_slot then
+		detector_switch = nil
+		return true
+	end
+
+	return false
+end
+
+local function on_before_key_press(dik, bind, dis, flags)
+	if bind ~= key_bindings.kDETECTOR or not flags then return end
+
+	local actor = db.actor
+	if not actor or actor:active_detector() or not actor:item_in_slot(DETECTOR_SLOT) then return end
+
+	local active_slot = actor:active_slot()
+	local active_item = active_slot ~= NO_ACTIVE_SLOT and actor:item_in_slot(active_slot)
+	if not active_item then return end
+
+	-- Don't assume the pistol/binoc UI icon resolves to engine slot 2/5 -
+	-- some UI skins map the "pistol" icon to a different real inventory
+	-- slot (e.g. KNIFE_SLOT=1), so compare against the item's own natural
+	-- slot instead of a hardcoded target slot number.
+	local section = active_item:section()
+	local base_slot = base_slot_of(section)
+	local uses_ees_slot =
+		active_slot ~= base_slot and
+		(is_allowed(section, ALLOW_PISTOL_SECTION) or is_allowed(section, ALLOW_BINOC_SECTION))
+	if not uses_ees_slot then return end
+
+	-- Knife, pistol, and bolt base slots are already detector-compatible.
+	if base_slot == 1 or base_slot == PISTOL_BASE_SLOT or base_slot == BOLT_SLOT then return end
+
+	local target_slot = actor:item_in_slot(BOLT_SLOT) and BOLT_SLOT or NO_ACTIVE_SLOT
+	flags.ret_value = false
+	RemoveTimeEvent(DETECTOR_EVENT_ID, DETECTOR_EVENT_ACTION)
+	detector_switch = {
+		source_slot = active_slot,
+		target_slot = target_slot,
+		deadline = time_global() + 5000,
+	}
+	CreateTimeEvent(DETECTOR_EVENT_ID, DETECTOR_EVENT_ACTION, 0, finish_detector_switch)
+	actor:activate_slot(target_slot)
+end
+
+RegisterScriptCallback("on_before_key_press", on_before_key_press)
