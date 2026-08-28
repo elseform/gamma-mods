@@ -30,11 +30,12 @@
   recognizes the extra cell for an allowed weapon. Each wraps `slot_cell`
   temporarily, so the extra cell only opens up for that one item, not every
   weapon sharing its base slot.
-- Detector fallback is handled as an exception: switching a weapon into an
-  EES slot can make the engine's own detector-key fallback search select the
-  EES slot itself instead of falling back to the bolt. FITS intercepts that
-  key press, switches to the bolt itself, and shows the detector only once
-  the inventory finishes its deferred slot transition.
+- Detector fallback is handled as an exception: the engine's own
+  detector-key fallback always prefers whatever is in the knife slot over the
+  bolt, without checking it's actually a knife — so a weapon EES parked in
+  the pistol or knife slot gets wrongly reactivated instead of the bolt.
+  FITS intercepts that key press, switches to the bolt itself, and shows the
+  detector only once the inventory finishes its deferred slot transition.
 
 ## MCM Options (`elseform_ees`)
 
@@ -58,3 +59,12 @@ hidden.
 
 - MCM (RavenAscendant) for the two cosmetic checkboxes. Optional; the
   right-click toggle itself works without it.
+
+## Changelog
+
+- **1.0.1** — Fixed detector-key fallback wrongly reactivating an EES-parked
+  weapon (in the pistol or knife slot) instead of switching to the bolt, when
+  both slots were occupied. Root cause: the engine's own fallback search
+  always prefers the knife slot over the bolt without checking it holds a
+  real knife.
+- **1.0.0** — Initial release.

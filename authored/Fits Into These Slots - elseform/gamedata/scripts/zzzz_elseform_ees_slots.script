@@ -460,12 +460,17 @@ custom_functor_autoinject.add_functor("elseform_ees_menu", ees_menu_cond, ees_me
 -- Detector compatibility
 ------------------------------------------------------------------------------
 
--- CCustomDevice::CheckCompatibilityInt chooses a fallback from the active
--- inventory slots using the item's immutable BaseSlot. EES changes CurrSlot,
--- so that native search can select the EES slot itself and leave the detector
--- pending until some later weapon switch. Own this one exceptional sequence:
--- consume the native detector press, switch to the bolt, then show the
--- detector only after CInventory finishes its deferred slot transition.
+-- CCustomDevice::CheckCompatibilityInt's own fallback search always prefers
+-- KNIFE_SLOT over BOLT_SLOT when both are occupied (it checks bolt, then
+-- unconditionally overwrites with knife - CustomDevice.cpp:39-43), and it
+-- never verifies the item actually in KNIFE_SLOT is a real knife. EES can
+-- park a two-hand weapon in KNIFE_SLOT or the pistol slot, displacing the
+-- real knife/pistol; the native fallback then "switches to knife" but really
+-- just reactivates that pending EES weapon, wrong regardless of which
+-- device-incompatible weapon (rifle 1/2, binoculars, the EES weapon itself)
+-- was active when the detector key was pressed. Own this one exceptional
+-- sequence: consume the native detector press, switch to the bolt, then show
+-- the detector only after CInventory finishes its deferred slot transition.
 local DETECTOR_EVENT_ID = "elseform_ees"
 local DETECTOR_EVENT_ACTION = "show_detector_after_fallback"
 local detector_switch
@@ -515,6 +520,17 @@ local function finish_detector_switch()
 	return false
 end
 
+-- An item counts as "EES-parked" in a slot when it's physically sitting in
+-- that engine slot but its own immutable base slot says otherwise - i.e. it
+-- only got there via the pistol/binoc allow-list, not its native .ltx slot=.
+local function ees_item_in_slot(actor, engine_slot)
+	local item = actor:item_in_slot(engine_slot)
+	if not item then return false end
+	local section = item:section()
+	if base_slot_of(section) == engine_slot then return false end
+	return is_allowed(section, ALLOW_PISTOL_SECTION) or is_allowed(section, ALLOW_BINOC_SECTION)
+end
+
 local function on_before_key_press(dik, bind, dis, flags)
 	if bind ~= key_bindings.kDETECTOR or not flags then return end
 
@@ -525,19 +541,24 @@ local function on_before_key_press(dik, bind, dis, flags)
 	local active_item = active_slot ~= NO_ACTIVE_SLOT and actor:item_in_slot(active_slot)
 	if not active_item then return end
 
-	-- Don't assume the pistol/binoc UI icon resolves to engine slot 2/5 -
-	-- some UI skins map the "pistol" icon to a different real inventory
-	-- slot (e.g. KNIFE_SLOT=1), so compare against the item's own natural
-	-- slot instead of a hardcoded target slot number.
-	local section = active_item:section()
-	local base_slot = base_slot_of(section)
-	local uses_ees_slot =
-		active_slot ~= base_slot and
-		(is_allowed(section, ALLOW_PISTOL_SECTION) or is_allowed(section, ALLOW_BINOC_SECTION))
-	if not uses_ees_slot then return end
+	-- CheckCompatibilityInt (CustomDevice.cpp) treats the active weapon as
+	-- device-compatible only when its own BaseSlot is pistol/knife/bolt; any
+	-- other active weapon (rifle 1/2, binoculars, or an EES weapon itself)
+	-- makes it run its own fallback search - which is exactly the search
+	-- that's broken, so run the override for ALL of those, not just when the
+	-- active weapon is the EES one.
+	local active_base_slot = base_slot_of(active_item:section())
+	if active_base_slot == 1 or active_base_slot == PISTOL_BASE_SLOT or active_base_slot == BOLT_SLOT then return end
 
-	-- Knife, pistol, and bolt base slots are already detector-compatible.
-	if base_slot == 1 or base_slot == PISTOL_BASE_SLOT or base_slot == BOLT_SLOT then return end
+	-- CheckCompatibilityInt's native fallback checks BOLT_SLOT first, then
+	-- unconditionally overwrites that choice with KNIFE_SLOT if anything at
+	-- all occupies KNIFE_SLOT (CustomDevice.cpp:39-43) - it never checks
+	-- whether that "knife" is actually the real knife. If EES parked a
+	-- two-hand weapon in KNIFE_SLOT or the pistol slot (displacing the real
+	-- knife/pistol), the engine's "fallback to knife" just reactivates that
+	-- pending EES weapon again instead of bolt. Only need to route around
+	-- this when that corruption is actually present.
+	if not (ees_item_in_slot(actor, 1) or ees_item_in_slot(actor, PISTOL_BASE_SLOT)) then return end
 
 	local target_slot = actor:item_in_slot(BOLT_SLOT) and BOLT_SLOT or NO_ACTIVE_SLOT
 	flags.ret_value = false
