@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_elseform_fits_allow_pistol">
+		<text>%c[pda_blue]разрешить слот пистолета</text>
+	</string>
+	<string id="st_elseform_fits_disallow_pistol">
+		<text>%c[pda_blue]запретить слот пистолета</text>
+	</string>
+	<string id="st_elseform_fits_allow_binoc">
+		<text>%c[pda_blue]разрешить слот бинокля</text>
+	</string>
+	<string id="st_elseform_fits_disallow_binoc">
+		<text>%c[pda_blue]запретить слот бинокля</text>
+	</string>
+	<string id="st_elseform_fits_menu">
+		<text>%c[pda_blue]разрешить доп. слот</text>
+	</string>
+	<string id="ui_mcm_menu_elseform_fits">
+		<text>%c[pda_blue]FITS</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_title">
+		<text>Fits Into These Slots</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_desc">
+		<text>Разрешает оружие в слот пистолета (ножа) или бинокля. Список разрешённых: правый клик по оружию в инвентаре разрешает его. По рангу: слоты открываются с ростом ранга, пункт правого клика скрыт.</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_enabled">
+		<text>FITS включён</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_mode">
+		<text>Режим</text>
+	</string>
+	<string id="ui_mcm_lst_elseform_fits_mode_allowlist">
+		<text>Список разрешённых</text>
+	</string>
+	<string id="ui_mcm_lst_elseform_fits_mode_rank">
+		<text>По рангу</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_allowlist_title">
+		<text>Список разрешённых</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_colored_menu_text">
+		<text>Окрашивать пункт правого клика</text>
+	</string>
+	<string id="st_elseform_fits_rank_experienced">
+		<text>FITS: пистолеты теперь помещаются в слот бинокля.</text>
+	</string>
+	<string id="st_elseform_fits_rank_professional">
+		<text>FITS: дробовики теперь помещаются в слот ножа.</text>
+	</string>
+	<string id="st_elseform_fits_rank_veteran">
+		<text>FITS: ПП теперь тоже помещаются в слот ножа.</text>
+	</string>
+	<string id="st_elseform_fits_rank_expert">
+		<text>FITS: дробовики теперь помещаются и в слот бинокля.</text>
+	</string>
+	<string id="st_elseform_fits_rank_master">
+		<text>FITS: ПП теперь помещаются и в слот бинокля.</text>
+	</string>
+	<string id="st_elseform_fits_rank_legend">
+		<text>FITS: любое оружие теперь помещается в оба слота.</text>
+	</string>
+</string_table>

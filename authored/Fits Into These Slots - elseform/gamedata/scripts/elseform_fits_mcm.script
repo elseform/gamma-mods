@@ -1,0 +1,98 @@
+--[[
+Fits Into These Slots - elseform: MCM
+
+enabled is the master switch: while it's off, zzzz_elseform_fits_slots.script
+grants no extra slot in either mode, hides the right-click entry, skips its
+detector-key override, and posts no rank tips. Nothing is written or cleared,
+so switching it back on restores whatever the active mode allowed.
+
+mode picks where allowances come from. "allowlist" reads the per-weapon ltx
+list that the right-click "allow extra slot" entry maintains; "rank" swaps
+that for rank-gated allowances by weapon kind and hides the right-click entry
+(it writes the ltx, which that mode doesn't read). Switching never touches the
+ltx, so the hand-picked list survives untouched.
+
+colored_menu_text only applies to the allowlist mode's right-click entry:
+render it (and its submenu) in the mod's color or the default context-menu
+color. Its id predates the mode list and is kept so saved values carry over.
+
+Author: elseform, 2026
+--]]
+
+local cache = {}
+
+local function get_config(path, default)
+	local value = cache[path]
+	if value ~= nil then
+		return value
+	end
+
+	value = default
+	if ui_mcm then
+		local stored = ui_mcm.get(path)
+		if stored ~= nil then
+			value = stored
+		end
+	end
+
+	cache[path] = value
+	return value
+end
+
+local function flush_cache()
+	empty_table(cache)
+end
+
+function on_game_start()
+	flush_cache()
+	RegisterScriptCallback("on_option_change", flush_cache)
+end
+
+function is_enabled()
+	return get_config("elseform_fits/enabled", true)
+end
+
+function is_rank_mode()
+	return get_config("elseform_fits/mode", "allowlist") == "rank"
+end
+
+function is_menu_colored()
+	return get_config("elseform_fits/colored_menu_text", true)
+end
+
+function on_mcm_load()
+	return {
+		id = "elseform_fits",
+		sh = true,
+		text = "ui_mcm_menu_elseform_fits",
+		gr = {
+			{
+				id = "title",
+				type = "slide",
+				link = "ui_options_slider_player",
+				text = "ui_mcm_elseform_fits_title",
+				size = {512, 50},
+				spacing = 20,
+			},
+			{
+				id = "desc",
+				type = "desc",
+				text = "ui_mcm_elseform_fits_desc",
+			},
+			{ id = "enabled", type = "check", val = 1, def = true },
+			{
+				id = "mode",
+				type = "list",
+				val = 0,
+				def = "allowlist",
+				content = {
+					{"allowlist", "elseform_fits_mode_allowlist"},
+					{"rank", "elseform_fits_mode_rank"},
+				},
+			},
+			{ id = "allowlist_line", type = "line" },
+			{ id = "allowlist_title", type = "title", text = "ui_mcm_elseform_fits_allowlist_title" },
+			{ id = "colored_menu_text", type = "check", val = 1, def = true },
+		}
+	}
+end

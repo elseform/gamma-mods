@@ -7,15 +7,17 @@ already allows. No manual weapon-name lookup: right-click any eligible
 weapon in inventory for an "Allow: Pistol Slot" / "Allow: Binoculars Slot"
 toggle (custom_functor_autoinject.script, the same right-click-action API
 Neat Usability Tweaks uses), which writes the choice straight into
-gamedata/configs/plugins/zzzz_elseform_ees_slots.ltx. CScriptIniFile's w_*
+gamedata/configs/plugins/elseform_fits_slots.ltx (no zzzz_ prefix - that's a
+script load-order convention, meaningless for a plain data file the plugin
+opens directly by name). CScriptIniFile's w_*
 wrappers all require the target line to already exist (THROW3 in
 script_ini_file.cpp otherwise), so a brand-new weapon entry can't go through
 them; the toggle instead rewrites the ltx directly via io.open, same pattern
 ape_mcm.script already uses. CInifile also caches parsed file content by
 filename and only its own save_as() invalidates that cache - reconstructing
-ini_ees after an io.open write just hands back the stale pre-write data - so
+ini_fits after an io.open write just hands back the stale pre-write data - so
 the allow-lists live in plain Lua tables for the whole session (loaded once
-from ini_ees at startup) and io.open is only used to persist to disk for the
+from ini_fits at startup) and io.open is only used to persist to disk for the
 next launch. The ltx stays hand-editable too; the toggle is just a faster
 way to populate it.
 
@@ -39,10 +41,10 @@ pistol and binoc at once (extra_cells_for returns a list, not a single cell).
 Author: elseform, 2026
 --]]
 
-local EES_DEBUG = false
+local FITS_DEBUG = false
 
 local function dbg(...)
-	if EES_DEBUG then
+	if FITS_DEBUG then
 		printf(...)
 	end
 end
@@ -55,23 +57,16 @@ local NO_ACTIVE_SLOT = 0
 local ALLOW_PISTOL_SECTION = "allow_pistol_slot"
 local ALLOW_BINOC_SECTION = "allow_binoc_slot"
 
-local EES_LTX_REL_PATH = "plugins\\zzzz_elseform_ees_slots.ltx"
+local FITS_LTX_REL_PATH = "plugins\\elseform_fits_slots.ltx"
 
--- CInifile caches parsed file content by filename (Xr_ini.cpp, dltx_use_cache)
--- and only its own save_as() invalidates that cache on write. w_* wrappers
--- also THROW3 if the target line doesn't already exist (script_ini_file.cpp),
--- so they can't create a first-ever toggle either way. So: read the ltx via
--- ini_ees exactly once at load, keep the allow-lists in plain Lua tables for
--- the rest of the session (is_allowed never touches ini_ees again), and only
--- use io.open to persist to disk for the *next* launch - re-constructing
--- ini_ees mid-session would just hand back the stale pre-write cache.
-local ini_ees = ini_file(EES_LTX_REL_PATH)
+-- Read once at load; see module header for why (CInifile caching / w_* THROW3).
+local ini_fits = ini_file(FITS_LTX_REL_PATH)
 
 local function load_allowed_set(ini_section)
 	local set = {}
-	if ini_ees:section_exist(ini_section) then
-		for i = 0, ini_ees:line_count(ini_section) - 1 do
-			local ok, key = ini_ees:r_line(ini_section, i, "", "")
+	if ini_fits:section_exist(ini_section) then
+		for i = 0, ini_fits:line_count(ini_section) - 1 do
+			local ok, key = ini_fits:r_line(ini_section, i, "", "")
 			if ok and key and key ~= "" then
 				set[key] = true
 			end
@@ -85,13 +80,142 @@ local allowed_sets = {
 	[ALLOW_BINOC_SECTION] = load_allowed_set(ALLOW_BINOC_SECTION),
 }
 
+------------------------------------------------------------------------------
+-- Rank-based mode: rank-gated allowances by weapon kind
+------------------------------------------------------------------------------
+
+-- Weapon class comes from the item's own `kind` ltx key, not `class` - `class`
+-- is the engine object class (WP_BINOC, WP_AK74...), which doesn't separate an
+-- SMG from a rifle. `kind` is what the inventory/trader configs sort on.
+local WEAPON_KINDS = {
+	w_melee = true,
+	w_pistol = true,
+	w_smg = true,
+	w_shotgun = true,
+	w_rifle = true,
+	w_sniper = true,
+}
+
+-- Which rank first grants a given kind, per target slot. Cumulative: the check
+-- is `current tier >= that rank's tier`, so a Veteran keeps the shotgun grant
+-- Professional earned. No melee entry: binoc_pistol_knife.script already lets
+-- every knife-slot item into the binoculars slot by default.
+local BINOC_UNLOCKS = {
+	w_pistol = "experienced",
+	w_shotgun = "expert",
+	w_smg = "master",
+}
+local PISTOL_UNLOCKS = {
+	w_shotgun = "professional",
+	w_smg = "veteran",
+}
+-- At this rank every kind in WEAPON_KINDS fits both slots.
+local FREEDOM_RANK = "legend"
+
+local kind_cache = {}
+
+local function kind_of(section)
+	local kind = kind_cache[section]
+	if kind == nil then
+		-- Type 0 (string): type 2 is r_float_ex, which returns nil for "w_pistol".
+		kind = SYS_GetParam(0, section, "kind") or ""
+		kind_cache[section] = kind
+	end
+	return kind
+end
+
+-- Rank tiers come from game_relations.ltx rather than a hardcoded list, so a
+-- modded rating line (renamed or re-thresholded tiers) still resolves. Format
+-- is name, threshold, name, threshold, ..., name - 8 names, 7 thresholds. Tier
+-- index is 0-based to match how game_statistics.check_for_rank_change counts.
+local rank_names, rank_thresholds
+
+local function load_rank_table()
+	if rank_names then return end
+
+	rank_names, rank_thresholds = {}, {}
+	local ini = ini_file("creatures\\game_relations.ltx")
+	local rating = ini:r_string_ex("game_relations", "rating") or ""
+	local i = 0
+	for token in string.gmatch(rating, "([%w_%-.\\]+)[%,%s]*") do
+		i = i + 1
+		if i % 2 == 1 then
+			rank_names[#rank_names + 1] = token
+		else
+			rank_thresholds[#rank_thresholds + 1] = tonumber(token)
+		end
+	end
+end
+
+local function tier_of_points(points)
+	load_rank_table()
+
+	local tier = 0
+	for i = 1, #rank_thresholds do
+		if points <= rank_thresholds[i] then
+			break
+		end
+		tier = tier + 1
+	end
+	return tier
+end
+
+local function tier_of_rank_name(name)
+	load_rank_table()
+
+	for i = 1, #rank_names do
+		if rank_names[i] == name then
+			return i - 1
+		end
+	end
+	return nil
+end
+
+local function current_tier()
+	local actor = db.actor
+	if not actor then return nil end
+	return tier_of_points(actor:character_rank())
+end
+
+local function progression_allows(section, ini_section)
+	local kind = kind_of(section)
+	if not WEAPON_KINDS[kind] then return false end
+
+	local tier = current_tier()
+	if not tier then return false end
+
+	local freedom_tier = tier_of_rank_name(FREEDOM_RANK)
+	if freedom_tier and tier >= freedom_tier then
+		return true
+	end
+
+	local unlock_rank = (ini_section == ALLOW_PISTOL_SECTION and PISTOL_UNLOCKS or BINOC_UNLOCKS)[kind]
+	if not unlock_rank then return false end
+
+	local unlock_tier = tier_of_rank_name(unlock_rank)
+	return unlock_tier ~= nil and tier >= unlock_tier
+end
+
+-- Rank-based mode and the static allow-list are mutually exclusive, not
+-- additive: while Rank-based mode is selected the ltx is ignored entirely (and its
+-- right-click toggle is hidden, see is_menu_visible), and turning it back off
+-- restores the static list untouched. Nothing here ever writes the ltx, so
+-- switching modes mid-game is lossless in both directions. The MCM master
+-- switch sits above both: while FITS is disabled nothing is allowed, which also
+-- turns off the drag/hover/equip patches and the detector override below.
 local function is_allowed(section, ini_section)
+	if not elseform_fits_mcm.is_enabled() then
+		return false
+	end
+	if elseform_fits_mcm.is_rank_mode() then
+		return progression_allows(section, ini_section)
+	end
 	return allowed_sets[ini_section][section] == true
 end
 
-local function write_ees_ltx()
+local function write_fits_ltx()
 	local content = "; Fits Into These Slots - elseform\n" ..
-		"; Managed automatically by zzzz_elseform_ees_slots.script (right-click toggle).\n" ..
+		"; Managed automatically by zzzz_elseform_fits_slots.script (right-click toggle).\n" ..
 		"; Hand-editing still works: section key is the weapon's item section, value unused.\n\n" ..
 		"[" .. ALLOW_PISTOL_SECTION .. "]\n"
 	for key in pairs(allowed_sets[ALLOW_PISTOL_SECTION]) do
@@ -102,19 +226,19 @@ local function write_ees_ltx()
 		content = content .. key .. "\n"
 	end
 
-	local path = getFS():update_path("$game_config$", "") .. EES_LTX_REL_PATH
+	local path = getFS():update_path("$game_config$", "") .. FITS_LTX_REL_PATH
 	local f = io.open(path, "w")
 	if not f then
-		printf("[EES] write_ees_ltx: FAILED to open %s for writing", path)
+		printf("[FITS] write_fits_ltx: FAILED to open %s for writing", path)
 		return
 	end
 	f:write(content)
 	f:close()
-	dbg("[EES] write_ees_ltx: wrote %s", path)
+	dbg("[FITS] write_fits_ltx: wrote %s", path)
 end
 
 local function set_allowed(section, ini_section, allowed)
-	dbg("[EES] set_allowed: section=%s ini_section=%s allowed=%s", section, ini_section, tostring(allowed))
+	dbg("[FITS] set_allowed: section=%s ini_section=%s allowed=%s", section, ini_section, tostring(allowed))
 
 	if allowed then
 		allowed_sets[ini_section][section] = true
@@ -122,9 +246,9 @@ local function set_allowed(section, ini_section, allowed)
 		allowed_sets[ini_section][section] = nil
 	end
 
-	write_ees_ltx()
+	write_fits_ltx()
 
-	dbg("[EES] set_allowed: after write is_allowed(%s, %s) = %s", section, ini_section, tostring(is_allowed(section, ini_section)))
+	dbg("[FITS] set_allowed: after write is_allowed(%s, %s) = %s", section, ini_section, tostring(is_allowed(section, ini_section)))
 end
 
 -- section -> base_slot is static for the whole session (ltx doesn't change
@@ -155,7 +279,7 @@ end
 -- [BINOC_BASE_SLOT] at call time instead of a hardcoded cell number: pistol's
 -- own cell list is {2,1,3}, not just {2} (ui_inventory.script:558), and this
 -- pack's UI resolves "the pistol slot icon" to cell 1, not 2 - confirmed via
--- [EES] logging showing every drop attempt landing on idx_to=1 and never
+-- [FITS] logging showing every drop attempt landing on idx_to=1 and never
 -- matching a hardcoded PISTOL_CELL=2. Pulling the real list sidesteps having
 -- to guess which cell number a given UI skin renders as which icon.
 local function extra_cells_for(self, section)
@@ -164,15 +288,15 @@ local function extra_cells_for(self, section)
 	-- Almost every hovered/equipped item is in neither allow-list - check the
 	-- cheap table lookups before paying for base_slot_of's ini lookup.
 	if not pistol_ok and not binoc_ok then
-		if EES_DEBUG then
-			dbg("[EES] extra_cells_for: section=%s -> nil (not in either allow-list)", section)
+		if FITS_DEBUG then
+			dbg("[FITS] extra_cells_for: section=%s -> nil (not in either allow-list)", section)
 		end
 		return nil
 	end
 
 	local own_slot = base_slot_of(section)
-	if EES_DEBUG then
-		dbg("[EES] extra_cells_for: section=%s own_slot=%s pistol_allowed=%s binoc_allowed=%s", section, tostring(own_slot), tostring(pistol_ok), tostring(binoc_ok))
+	if FITS_DEBUG then
+		dbg("[FITS] extra_cells_for: section=%s own_slot=%s pistol_allowed=%s binoc_allowed=%s", section, tostring(own_slot), tostring(pistol_ok), tostring(binoc_ok))
 	end
 
 	local cells = {}
@@ -189,13 +313,13 @@ local function extra_cells_for(self, section)
 		end
 	end
 	if is_empty(cells) then
-		if EES_DEBUG then
-			dbg("[EES] extra_cells_for: -> nil (no extra cells)")
+		if FITS_DEBUG then
+			dbg("[FITS] extra_cells_for: -> nil (no extra cells)")
 		end
 		return nil
 	end
-	if EES_DEBUG then
-		dbg("[EES] extra_cells_for: -> base_slot=%s extra_cells={%s}", tostring(own_slot), table.concat(cells, ","))
+	if FITS_DEBUG then
+		dbg("[FITS] extra_cells_for: -> base_slot=%s extra_cells={%s}", tostring(own_slot), table.concat(cells, ","))
 	end
 	return own_slot, cells
 end
@@ -220,8 +344,8 @@ local function with_extra_cell(self, section, fn)
 		patched_cells[#patched_cells + 1] = extra_cells[i]
 	end
 	self.slot_cell[base_slot] = patched_cells
-	if EES_DEBUG then
-		dbg("[EES] with_extra_cell: patched slot_cell[%s] = {%s} -> {%s}", tostring(base_slot), table.concat(saved_cells, ","), table.concat(patched_cells, ","))
+	if FITS_DEBUG then
+		dbg("[FITS] with_extra_cell: patched slot_cell[%s] = {%s} -> {%s}", tostring(base_slot), table.concat(saved_cells, ","), table.concat(patched_cells, ","))
 	end
 
 	-- fn() can throw (engine equip/drag/hover paths do on bad state) - restore
@@ -230,8 +354,8 @@ local function with_extra_cell(self, section, fn)
 	local ok, err = pcall(fn)
 
 	self.slot_cell[base_slot] = saved_cells
-	if EES_DEBUG then
-		dbg("[EES] with_extra_cell: restored slot_cell[%s]", tostring(base_slot))
+	if FITS_DEBUG then
+		dbg("[FITS] with_extra_cell: restored slot_cell[%s]", tostring(base_slot))
 	end
 
 	if not ok then
@@ -251,7 +375,7 @@ ui_inventory.UIInventory.Action_Equip = function(self, obj, bag)
 	-- to resolve that id; this one has to too, or obj:section() below throws
 	-- "attempt to index local 'obj' (a number value)" on right-click equip.
 	obj = self:CheckItem(obj, "Action_Equip")
-	dbg("[EES] Action_Equip: obj=%s bag=%s", obj and obj:section() or "nil", tostring(bag))
+	dbg("[FITS] Action_Equip: obj=%s bag=%s", obj and obj:section() or "nil", tostring(bag))
 	if not obj then
 		Original_Action_Equip(self, obj, bag)
 		return
@@ -270,7 +394,7 @@ local Original_On_CC_DragDrop = ui_inventory.UIInventory.On_CC_DragDrop
 ui_inventory.UIInventory.On_CC_DragDrop = function(self, bag_from, idx_from)
 	local cc = self.CC[bag_from]
 	local obj_from = cc and cc:GetObj(idx_from)
-	dbg("[EES] On_CC_DragDrop: bag_from=%s idx_from=%s obj_from=%s", tostring(bag_from), tostring(idx_from), obj_from and obj_from:section() or "nil")
+	dbg("[FITS] On_CC_DragDrop: bag_from=%s idx_from=%s obj_from=%s", tostring(bag_from), tostring(idx_from), obj_from and obj_from:section() or "nil")
 	if not obj_from then
 		Original_On_CC_DragDrop(self, bag_from, idx_from)
 		return
@@ -281,23 +405,23 @@ ui_inventory.UIInventory.On_CC_DragDrop = function(self, bag_from, idx_from)
 	-- just tells us exactly what bag_to/idx_to the game resolved the drop
 	-- to, so we can tell a bad target cell from a bad slot_cell patch.
 	local idx_to
-	if EES_DEBUG then
+	if FITS_DEBUG then
 		local bag_to, obj_to
 		for _, dcc in pairs(self.CC) do
 			bag_to, idx_to, obj_to = dcc:GetCell_Focused()
 			if bag_to then break end
 		end
-		dbg("[EES] On_CC_DragDrop: resolved drop target bag_to=%s idx_to=%s obj_to=%s", tostring(bag_to), tostring(idx_to), obj_to and obj_to:section() or "nil")
+		dbg("[FITS] On_CC_DragDrop: resolved drop target bag_to=%s idx_to=%s obj_to=%s", tostring(bag_to), tostring(idx_to), obj_to and obj_to:section() or "nil")
 	end
 
 	with_extra_cell(self, obj_from:section(), function()
 		Original_On_CC_DragDrop(self, bag_from, idx_from)
 	end)
 
-	if EES_DEBUG then
+	if FITS_DEBUG then
 		local equ = self.CC["actor_equ"]
 		local now_in_slot = equ and idx_to and equ:GetObj(idx_to)
-		dbg("[EES] On_CC_DragDrop: after call, actor_equ[%s] holds %s", tostring(idx_to), now_in_slot and now_in_slot:section() or "nothing")
+		dbg("[FITS] On_CC_DragDrop: after call, actor_equ[%s] holds %s", tostring(idx_to), now_in_slot and now_in_slot:section() or "nothing")
 	end
 end
 
@@ -334,7 +458,7 @@ end
 local plain_menu_text_cache = {}
 
 local function menu_text(str_id)
-	if zzzz_elseform_ees_mcm.is_menu_colored() then
+	if elseform_fits_mcm.is_menu_colored() then
 		return str_id
 	end
 
@@ -356,18 +480,18 @@ local function make_toggle(ini_section, target_base_slot, allow_str, disallow_st
 	local function cond(obj, bag, mode)
 		if mode ~= "inventory" then return false end
 		if not is_menu_visible() then
-			dbg("[EES] cond(%s): menu hidden by MCM", ini_section)
+			dbg("[FITS] cond(%s): menu hidden by MCM", ini_section)
 			return false
 		end
 		if not is_weapon(obj) then
-			dbg("[EES] cond(%s): obj=%s not recognized as weapon", ini_section, obj and obj:section() or "nil")
+			dbg("[FITS] cond(%s): obj=%s not recognized as weapon", ini_section, obj and obj:section() or "nil")
 			return false
 		end
 		local section = obj:section()
 		local own_slot = base_slot_of(section)
 		local result = own_slot ~= target_base_slot
-		if EES_DEBUG then
-			dbg("[EES] cond(%s): obj=%s own_slot=%s target_slot=%s -> %s", ini_section, section, tostring(own_slot), tostring(target_base_slot), tostring(result))
+		if FITS_DEBUG then
+			dbg("[FITS] cond(%s): obj=%s own_slot=%s target_slot=%s -> %s", ini_section, section, tostring(own_slot), tostring(target_base_slot), tostring(result))
 		end
 		return result
 	end
@@ -376,56 +500,52 @@ local function make_toggle(ini_section, target_base_slot, allow_str, disallow_st
 		return menu_text(is_allowed(obj:section(), ini_section) and disallow_str or allow_str)
 	end
 
-	local function action(obj, bag, mode)
-		local section = obj:section()
-		dbg("[EES] action(%s): toggle clicked for %s", ini_section, section)
-		set_allowed(section, ini_section, not is_allowed(section, ini_section))
-	end
-
-	return cond, name, action
+	return cond, name
 end
 
--- Menu visibility only hides/shows the right-click option (one MCM checkbox
--- in zzzz_elseform_ees_mcm.script, covering both toggles now that they share
--- a single top-level entry). It never touches ini_ees, so a weapon already
--- toggled on keeps its extra slot regardless of menu visibility.
-local function is_menu_visible() return zzzz_elseform_ees_mcm.is_menu_visible() end
+-- The right-click entry only exists in allowlist mode with FITS enabled. In
+-- rank mode is_allowed doesn't read the ltx, so the toggle would write an
+-- entry that changes nothing. Hiding it only affects display - the ltx keeps
+-- whatever it held.
+local function is_menu_visible()
+	return elseform_fits_mcm.is_enabled() and not elseform_fits_mcm.is_rank_mode()
+end
 
-local pistol_cond, pistol_name, pistol_action = make_toggle(
+local pistol_cond, pistol_name = make_toggle(
 	ALLOW_PISTOL_SECTION, PISTOL_BASE_SLOT,
-	"st_elseform_ees_allow_pistol", "st_elseform_ees_disallow_pistol",
+	"st_elseform_fits_allow_pistol", "st_elseform_fits_disallow_pistol",
 	is_menu_visible
 )
-local binoc_cond, binoc_name, binoc_action = make_toggle(
+local binoc_cond, binoc_name = make_toggle(
 	ALLOW_BINOC_SECTION, BINOC_BASE_SLOT,
-	"st_elseform_ees_allow_binoc", "st_elseform_ees_disallow_binoc",
+	"st_elseform_fits_allow_binoc", "st_elseform_fits_disallow_binoc",
 	is_menu_visible
 )
 
 -- Both toggles used to be separate top-level right-click entries; folded into
 -- one "Extra Equip Slot" entry that opens a UICellPropertiesCustom popup
 -- (utils_ui_custom.script) listing only the toggle(s) this item is actually
--- eligible for - same pattern zzzzz_elseform_nut_maintenance.script uses for
+-- eligible for - same pattern zzzzzzzzzz_elseform_nut_maintenance.script uses for
 -- its "clean all parts" list (init_maintenance_menu/UICellPropertiesCustom).
 -- The popup's functor is called with the item's params unpacked
 -- (UICellPropertiesCustom:OnListItemDbClicked), so action/params just need
 -- to carry which allow-list section to flip.
-local ees_menu_gui
-local ees_menu_snd
+local fits_menu_gui
+local fits_menu_snd
 
-local function ees_menu_dispatch(section, ini_section)
+local function fits_menu_dispatch(section, ini_section)
 	set_allowed(section, ini_section, not is_allowed(section, ini_section))
 end
 
-local function ees_menu_cond(obj, bag, mode)
+local function fits_menu_cond(obj, bag, mode)
 	return pistol_cond(obj, bag, mode) or binoc_cond(obj, bag, mode)
 end
 
-local function ees_menu_name(obj, bag, mode)
-	return menu_text("st_elseform_ees_menu")
+local function fits_menu_name(obj, bag, mode)
+	return menu_text("st_elseform_fits_menu")
 end
 
-local function ees_menu_action(obj, bag, mode)
+local function fits_menu_action(obj, bag, mode)
 	local section = obj:section()
 	local context_str, context_action, context_params = {}, {}, {}
 	local n = 0
@@ -443,18 +563,18 @@ local function ees_menu_action(obj, bag, mode)
 		context_params[n] = {section, ALLOW_BINOC_SECTION}
 	end
 
-	if not ees_menu_gui then
-		ees_menu_gui = utils_ui_custom.UICellPropertiesCustom(ees_menu_dispatch)
+	if not fits_menu_gui then
+		fits_menu_gui = utils_ui_custom.UICellPropertiesCustom(fits_menu_dispatch)
 	end
-	ees_menu_gui:Reset(GetCursorPosition(), context_action, context_str, context_params)
+	fits_menu_gui:Reset(GetCursorPosition(), context_action, context_str, context_params)
 
-	if not ees_menu_snd then
-		ees_menu_snd = sound_object([[interface\inv_properties_2]])
+	if not fits_menu_snd then
+		fits_menu_snd = sound_object([[interface\inv_properties_2]])
 	end
-	ui_inventory.GUI:PlaySND(ees_menu_snd)
+	ui_inventory.GUI:PlaySND(fits_menu_snd)
 end
 
-custom_functor_autoinject.add_functor("elseform_ees_menu", ees_menu_cond, ees_menu_name, ees_menu_cond, ees_menu_action)
+custom_functor_autoinject.add_functor("elseform_fits_menu", fits_menu_cond, fits_menu_name, fits_menu_cond, fits_menu_action)
 
 ------------------------------------------------------------------------------
 -- Detector compatibility
@@ -463,15 +583,15 @@ custom_functor_autoinject.add_functor("elseform_ees_menu", ees_menu_cond, ees_me
 -- CCustomDevice::CheckCompatibilityInt's own fallback search always prefers
 -- KNIFE_SLOT over BOLT_SLOT when both are occupied (it checks bolt, then
 -- unconditionally overwrites with knife - CustomDevice.cpp:39-43), and it
--- never verifies the item actually in KNIFE_SLOT is a real knife. EES can
+-- never verifies the item actually in KNIFE_SLOT is a real knife. FITS can
 -- park a two-hand weapon in KNIFE_SLOT or the pistol slot, displacing the
 -- real knife/pistol; the native fallback then "switches to knife" but really
--- just reactivates that pending EES weapon, wrong regardless of which
--- device-incompatible weapon (rifle 1/2, binoculars, the EES weapon itself)
+-- just reactivates that pending FITS weapon, wrong regardless of which
+-- device-incompatible weapon (rifle 1/2, binoculars, the FITS weapon itself)
 -- was active when the detector key was pressed. Own this one exceptional
 -- sequence: consume the native detector press, switch to the bolt, then show
 -- the detector only after CInventory finishes its deferred slot transition.
-local DETECTOR_EVENT_ID = "elseform_ees"
+local DETECTOR_EVENT_ID = "elseform_fits"
 local DETECTOR_EVENT_ACTION = "show_detector_after_fallback"
 local detector_switch
 
@@ -520,10 +640,10 @@ local function finish_detector_switch()
 	return false
 end
 
--- An item counts as "EES-parked" in a slot when it's physically sitting in
+-- An item counts as "FITS-parked" in a slot when it's physically sitting in
 -- that engine slot but its own immutable base slot says otherwise - i.e. it
 -- only got there via the pistol/binoc allow-list, not its native .ltx slot=.
-local function ees_item_in_slot(actor, engine_slot)
+local function fits_item_in_slot(actor, engine_slot)
 	local item = actor:item_in_slot(engine_slot)
 	if not item then return false end
 	local section = item:section()
@@ -543,22 +663,22 @@ local function on_before_key_press(dik, bind, dis, flags)
 
 	-- CheckCompatibilityInt (CustomDevice.cpp) treats the active weapon as
 	-- device-compatible only when its own BaseSlot is pistol/knife/bolt; any
-	-- other active weapon (rifle 1/2, binoculars, or an EES weapon itself)
+	-- other active weapon (rifle 1/2, binoculars, or a FITS weapon itself)
 	-- makes it run its own fallback search - which is exactly the search
 	-- that's broken, so run the override for ALL of those, not just when the
-	-- active weapon is the EES one.
+	-- active weapon is the FITS one.
 	local active_base_slot = base_slot_of(active_item:section())
 	if active_base_slot == 1 or active_base_slot == PISTOL_BASE_SLOT or active_base_slot == BOLT_SLOT then return end
 
 	-- CheckCompatibilityInt's native fallback checks BOLT_SLOT first, then
 	-- unconditionally overwrites that choice with KNIFE_SLOT if anything at
 	-- all occupies KNIFE_SLOT (CustomDevice.cpp:39-43) - it never checks
-	-- whether that "knife" is actually the real knife. If EES parked a
+	-- whether that "knife" is actually the real knife. If FITS parked a
 	-- two-hand weapon in KNIFE_SLOT or the pistol slot (displacing the real
 	-- knife/pistol), the engine's "fallback to knife" just reactivates that
-	-- pending EES weapon again instead of bolt. Only need to route around
+	-- pending FITS weapon again instead of bolt. Only need to route around
 	-- this when that corruption is actually present.
-	if not (ees_item_in_slot(actor, 1) or ees_item_in_slot(actor, PISTOL_BASE_SLOT)) then return end
+	if not (fits_item_in_slot(actor, 1) or fits_item_in_slot(actor, PISTOL_BASE_SLOT)) then return end
 
 	local target_slot = actor:item_in_slot(BOLT_SLOT) and BOLT_SLOT or NO_ACTIVE_SLOT
 	flags.ret_value = false
@@ -573,3 +693,60 @@ local function on_before_key_press(dik, bind, dis, flags)
 end
 
 RegisterScriptCallback("on_before_key_press", on_before_key_press)
+
+------------------------------------------------------------------------------
+-- Rank-based mode: rank-up notification
+------------------------------------------------------------------------------
+
+-- Its own message, fired right after the game's own rank-up tip, never
+-- replacing it: game_statistics already tells the player they ranked up
+-- (st_rank_increased, "rank_change" sender), so this one only says what FITS
+-- just granted, under a different sender so the two don't read as one message.
+--
+-- There is no rank-change callback to hook. check_for_rank_change is polled
+-- from increment_rank after every rank-point gain, compares
+-- db.actor:character_rank() against the cached
+-- game_statistics.actor_miscellaneous.actual_rank
+-- (game_statistics.script:463-486), and then overwrites that cache. So the
+-- "before" tier has to be read from that cache *before* calling through -
+-- reading it afterwards, or reading character_rank() on both sides, compares a
+-- value against itself and never reports a change.
+local RANK_TIP = {
+	experienced = "st_elseform_fits_rank_experienced",
+	professional = "st_elseform_fits_rank_professional",
+	veteran = "st_elseform_fits_rank_veteran",
+	expert = "st_elseform_fits_rank_expert",
+	master = "st_elseform_fits_rank_master",
+	legend = "st_elseform_fits_rank_legend",
+}
+
+-- FITS adds this sender through mod_news_tips_icons_fits.ltx, pointing at the
+-- game's existing weapon-category news icon. Keep it separate from
+-- "rank_change" so the FITS grant remains visually distinct from the game's
+-- own rank-up tip.
+local RANK_TIP_SENDER = "elseform_fits"
+
+local orig_check_for_rank_change = game_statistics.check_for_rank_change
+
+game_statistics.check_for_rank_change = function(suppress, ...)
+	local actor = db.actor
+	local old_tier, new_tier
+	if actor and not suppress and elseform_fits_mcm.is_enabled() and elseform_fits_mcm.is_rank_mode() then
+		old_tier = tier_of_points(game_statistics.actor_miscellaneous.actual_rank or 0)
+		new_tier = tier_of_points(actor:character_rank())
+	end
+
+	orig_check_for_rank_change(suppress, ...)
+
+	if not old_tier then return end
+
+	-- A single kill can carry the actor across more than one tier; announce
+	-- every newly crossed tier that actually unlocks something.
+	for tier = old_tier + 1, new_tier do
+		local tip = RANK_TIP[rank_names[tier + 1]]
+		if tip then
+			dbg("[FITS] rank tip: tier=%s name=%s", tostring(tier), tostring(rank_names[tier + 1]))
+			news_manager.send_tip(actor, tip, nil, RANK_TIP_SENDER, nil, nil)
+		end
+	end
+end

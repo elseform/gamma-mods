@@ -2,6 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
   <moduleName>Fits Into These Slots</moduleName>
+  <moduleImage path="fomod\FITS12.png" />
   <requiredInstallFiles>
     <file source="meta.ini" destination="meta.ini" />
     <file source="README.md" destination="README.md" />
@@ -12,7 +13,8 @@
         <group name="Package" type="SelectExactlyOne">
           <plugins order="Explicit">
             <plugin name="Fits Into These Slots">
-              <description>Lets whitelisted weapons be right-clicked into the pistol or binoculars slot, with MCM checkboxes to show/hide the two right-click options.</description>
+              <description>Lets whitelisted weapons be equipped into the pistol or binoculars slot, either by right-clicking them into an allow-list or, in an optional Rank-based mode, automatically by weapon kind as you rank up.</description>
+              <image path="fomod\FITS12.png" />
               <files>
                 <folder source="gamedata" destination="gamedata" />
               </files>

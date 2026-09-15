@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_elseform_fits_allow_pistol">
+		<text>%c[pda_blue]allow pistol slot</text>
+	</string>
+	<string id="st_elseform_fits_disallow_pistol">
+		<text>%c[pda_blue]disallow pistol slot</text>
+	</string>
+	<string id="st_elseform_fits_allow_binoc">
+		<text>%c[pda_blue]allow binoculars slot</text>
+	</string>
+	<string id="st_elseform_fits_disallow_binoc">
+		<text>%c[pda_blue]disallow binoculars slot</text>
+	</string>
+	<string id="st_elseform_fits_menu">
+		<text>%c[pda_blue]allow extra slot</text>
+	</string>
+	<string id="ui_mcm_menu_elseform_fits">
+		<text>%c[pda_blue]FITS</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_title">
+		<text>Fits Into These Slots</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_desc">
+		<text>Lets weapons into the pistol (knife) or binoculars slot. Allowlist: right-click a weapon in inventory to allow it. Rank-based: slots unlock as your rank grows, and the right-click option is hidden.</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_enabled">
+		<text>FITS enabled</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_mode">
+		<text>Mode</text>
+	</string>
+	<string id="ui_mcm_lst_elseform_fits_mode_allowlist">
+		<text>Allowlist</text>
+	</string>
+	<string id="ui_mcm_lst_elseform_fits_mode_rank">
+		<text>Rank-based</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_allowlist_title">
+		<text>Allowlist</text>
+	</string>
+	<string id="ui_mcm_elseform_fits_colored_menu_text">
+		<text>Colored right-click option</text>
+	</string>
+	<string id="st_elseform_fits_rank_experienced">
+		<text>FITS: pistols now fit the binoculars slot.</text>
+	</string>
+	<string id="st_elseform_fits_rank_professional">
+		<text>FITS: shotguns now fit the knife slot.</text>
+	</string>
+	<string id="st_elseform_fits_rank_veteran">
+		<text>FITS: SMGs now fit the knife slot too.</text>
+	</string>
+	<string id="st_elseform_fits_rank_expert">
+		<text>FITS: shotguns now fit the binoculars slot too.</text>
+	</string>
+	<string id="st_elseform_fits_rank_master">
+		<text>FITS: SMGs now fit the binoculars slot too.</text>
+	</string>
+	<string id="st_elseform_fits_rank_legend">
+		<text>FITS: any weapon now fits either slot.</text>
+	</string>
+</string_table>
