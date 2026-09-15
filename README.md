@@ -14,13 +14,6 @@ Although asking permission or letting me know is not required - I would love to 
 
 This permission covers my original work only. Third-party code and assets keep their original authors' permissions and requirements.
 
-## Standalone mods
-
-### [Custom Mod Categories (CMC)](<authored/Custom Mod Categories - elseform/README.md>)
-### [Flashing Inventory Highlights (FIH)](<authored/Flashing Inventory Highlights - elseform/README.md>)
-### [It's Time To Stop (ITTS)](<authored/Its Time To Stop - elseform/README.md>)
-### [Inspect Weapon Hotkey](<authored/Inspect Weapon Hotkey - elseform/README.md>)
-
 ## D3DMetal compatibility
 
 Shader overrides for running GAMMA through D3DMetal/DXMT on macOS / Apple
