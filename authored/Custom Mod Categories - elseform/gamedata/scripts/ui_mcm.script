@@ -197,6 +197,18 @@ local function category_provider()
 	return elseform_cmc
 end
 
+local function get_cmc_force_english()
+	local provider = category_provider()
+	return provider and provider.get_force_english_mcm and provider.get_force_english_mcm() or false
+end
+
+local function set_cmc_force_english(value)
+	local provider = category_provider()
+	if provider and provider.set_force_english_mcm then
+		provider.set_force_english_mcm(value)
+	end
+end
+
 AddScriptCallback("mcm_option_change")
 AddScriptCallback("mcm_option_reset")
 AddScriptCallback("mcm_option_restore_default")
@@ -212,7 +224,8 @@ function init_opt_base()
 					{ id= "slide_mcm"		 	   ,type= "slide"	  ,link= "AMCM_Banner.dds"	 ,text= "ui_mcm_menu_mcm_about"		,size= {444,43}		},
 					{ id= "desc_mcm"    	 	,type= "desc"     ,text= "ui_mcm_desc_mcm"			 ,clr= {255,125,175,200}	},
 					{ id= "desc_mcm2"    	 	,type= "desc"     ,text= "ui_mcm_desc_mcm2"			 ,clr= {255,125,175,200}	},
-					{ id="dxml"	              ,type= "check"    ,val= 1	,def= false 	    , precondition = {function() return dxml_core end}  },
+					{ id= "desc_dxml"           ,type= "desc"     ,text= "ui_mcm_elseform_cmc_desc_dxml",clr= {255,125,175,200} },
+					{ id="dxml"	              ,type= "check"    ,val= 1	,def= false 	    ,curr= {get_cmc_force_english},functor= {set_cmc_force_english},precondition= {function() return dxml_core end} },
 				},},
 				{id = "mcm_kb",  gr={
 					{id = "mcm_kb_main",  sh=true    ,gr={
@@ -1068,8 +1081,16 @@ function UI_MCM:Register_CMC_Page_Selector(path, has_preset)
 	local provider = category_provider()
 	local selector = provider and provider.page_selector and provider.page_selector(path)
 	self.cmc_category_selector = selector
+	-- ClearList/AddItem/enable_id below fire LIST_ITEM_SELECT synthetically as
+	-- they populate the combo, same as mod_search:SetText does for the search
+	-- box (see cmc_suppress_search_callback in Open_to). Without this guard,
+	-- Callback_CMC_Category runs mid-population with a stale CurrentID() (the
+	-- last item added, always Uncategorized -- see category_options), staging
+	-- a phantom category change nobody made.
+	self.cmc_suppress_category_callback = true
 	self.cmc_category:ClearList()
 	if not selector then
+		self.cmc_suppress_category_callback = false
 		self:Layout_Header_Controls(false, has_preset)
 		return
 	end
@@ -1096,10 +1117,14 @@ function UI_MCM:Register_CMC_Page_Selector(path, has_preset)
 	local text = content[idx][2] or tostring(content[idx][1])
 	self.cmc_category:enable_id(idx)
 	self.cmc_category:SetText(game.translate_string(text))
+	self.cmc_suppress_category_callback = false
 	self:Layout_Header_Controls(true, has_preset)
 end
 
 function UI_MCM:Callback_CMC_Category()
+	if self.cmc_suppress_category_callback then
+		return
+	end
 	local provider = category_provider()
 	local selector = self.cmc_category_selector
 	if not (provider and selector) then
@@ -1836,6 +1861,9 @@ function UI_MCM:Register_Input(xml, handler, path, opt, v, flags)
 	local value = self:GetValue(path, opt, v, flags)
 	ctrl:SetText(value)
 	
+	-- Store in self._Input for commit-on-apply support
+	self._Input[id] = { ctrl = ctrl, path = path, opt = opt, v = v }
+
 	-- Register
 	local id_ctrl = self:Stacker(path, opt, v)
 	
@@ -1863,18 +1891,19 @@ function UI_MCM:Register_Input(xml, handler, path, opt, v, flags)
 end
 function UI_MCM:Callback_Input(ctrl, path, opt, v)
 	local value = ctrl:GetText()
-	if not (value and value ~= "") then
-		ctrl:SetText( self:GetCurrentValue(path, opt, v) or self:GetDefaultValue(path, opt, v) )
-		return
-	end
-	
 	if (v.val == 2) then
+		if not (value and value ~= "") then
+			ctrl:SetText( self:GetCurrentValue(path, opt, v) or self:GetDefaultValue(path, opt, v) )
+			return
+		end
 		value = tonumber(value)
 		if (not value) then
 			ctrl:SetText( self:GetCurrentValue(path, opt, v) or self:GetDefaultValue(path, opt, v) )
 			return
 		end
 		value = clamp(value, v.min, v.max)
+	else
+		value = value or ""
 	end
 	
 	self:CacheValue(path, opt, value, v)
@@ -2591,13 +2620,12 @@ end
 -- Callbacks
 ------------------------------------------------------------
 function UI_MCM:OnButton_Accept()
-	--if self.Need_VidRestart then
-	--	self.message_box:InitMessageBox("message_box_yes_no")
-	--	self.message_box:SetText(string.format("%s %d% s", game.translate_string("ui_mm_confirm_changes"), 15, game.translate_string("mp_si_sec")))
-	--	self.message_box:ShowDialog(true)
-	--else
-		self:On_Accept()
-	--end
+	for id, item in pairs(self._Input) do
+		if item.ctrl then
+			self:Callback_Input(item.ctrl, item.path, item.opt, item.v)
+		end
+	end
+	self:On_Accept()
 end
 
 function UI_MCM:OnButton_Reset()

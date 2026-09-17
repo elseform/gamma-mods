@@ -1,32 +1,205 @@
 -- Custom Mod Categories
 --
--- CMC discovers MCM pages during the normal gathering pass. Explicit category
--- assignments are stored in the dedicated [cmc] section of axr_options.ltx;
--- missing entries are uncategorized.
+-- CMC discovers MCM pages during the normal gathering pass. Its mutable state
+-- lives in gamedata/configs/plugins/elseform_cmc.ltx; missing assignments use
+-- built-in defaults, or Uncategorized when no default exists.
+--
+-- [cmc] section: one line per mod, "<mcm_group_id> = <category_value>".
+-- <category_value> matches a "value" below: 0-13 and OTHER_VALUE/-1 are
+-- builtin (see default_categories), 1000+ are custom categories.
+--
+-- [cmc_categories] section: builtin category overrides use
+-- "<value>_name/_pinned/_deleted" keys.
+--
+-- [cmc_custom_categories] section: one custom category per row, keyed by its
+-- numeric value: "<value> = <pinned 0/1>,<name>". Values start at 1000. CMC
+-- calculates the next value from existing rows, and names may contain commas.
+--
+-- [cmc_settings] section: CMC-wide settings that do not belong to a category.
 
 local CMC_ID = "elseform_cmc"
+local CONFIG_PATH = "plugins\\elseform_cmc.ltx"
 local CONFIG_SECTION = "cmc"
+local CAT_CONFIG_SECTION = "cmc_categories"
+local CUSTOM_CAT_CONFIG_SECTION = "cmc_custom_categories"
+local SETTINGS_CONFIG_SECTION = "cmc_settings"
+local FORCE_ENGLISH_KEY = "force_english_mcm"
 local MCM_ID = "mcm"
 local UNCATEGORIZED_VALUE = -1
 local OTHER_VALUE = 0
 local config_dirty = false
+local cmc_config = nil
+local legacy_config_processed = false
+local rebuild_manage_group
+local delete_all_categories_action
+local restore_default_categories_action
 
-local category_definitions = {
-	{ id = "favorites", value = 14, text = "ui_mcm_elseform_cmc_category_favorites" },
-	{ id = "ui", value = 1, text = "ui_mcm_elseform_cmc_category_ui" },
-	{ id = "gameplay", value = 2, text = "ui_mcm_elseform_cmc_category_gameplay" },
-	{ id = "graphics", value = 3, text = "ui_mcm_elseform_cmc_category_graphics" },
-	{ id = "crafting", value = 4, text = "ui_mcm_elseform_cmc_category_crafting" },
-	{ id = "inventory", value = 5, text = "ui_mcm_elseform_cmc_category_inventory" },
-	{ id = "weapons", value = 6, text = "ui_mcm_elseform_cmc_category_weapons" },
-	{ id = "pda", value = 7, text = "ui_mcm_elseform_cmc_category_pda" },
-	{ id = "audio", value = 8, text = "ui_mcm_elseform_cmc_category_audio" },
-	{ id = "animation", value = 9, text = "ui_mcm_elseform_cmc_category_animation" },
-	{ id = "controls", value = 10, text = "ui_mcm_elseform_cmc_category_controls" },
-	{ id = "world", value = 11, text = "ui_mcm_elseform_cmc_category_world" },
-	{ id = "ai", value = 12, text = "ui_mcm_elseform_cmc_category_ai" },
-	{ id = "system", value = 13, text = "ui_mcm_elseform_cmc_category_system" },
-	{ id = "other", value = OTHER_VALUE, text = "ui_mcm_elseform_cmc_category_other" },
+-- DEV_DEBUG is an engine global (set from the game's -dbg launch option, same
+-- flag ui_mcm.script's debug_only() precondition reads) -- checked live, not
+-- cached at module load, since script load order does not guarantee it is
+-- already set.
+local function dbg_log(fmt, ...)
+	if not DEV_DEBUG or not printf then return end
+	if select("#", ...) == 0 then
+		printf("[CMC] " .. tostring(fmt))
+	else
+		local ok, res = pcall(string.format, fmt, ...)
+		if ok then
+			printf("[CMC] " .. res)
+		else
+			printf("[CMC] (fmt error) " .. tostring(fmt))
+		end
+	end
+end
+
+local function remove_section_lines(config, section)
+	if not config:section_exist(section) then return false end
+	local changed = false
+	for key, _ in pairs(config:collect_section(section) or {}) do
+		config:remove_line(section, key)
+		changed = true
+	end
+	return changed
+end
+
+local function migrate_legacy_config(config)
+	if legacy_config_processed then return end
+	local legacy = axr_main and axr_main.config
+	if not legacy then return end
+
+	local migrated_assignments = 0
+	local migrated_locale = false
+	if legacy:section_exist(CONFIG_SECTION) then
+		for mod_id, assigned_value in pairs(legacy:collect_section(CONFIG_SECTION) or {}) do
+			local value = tonumber(assigned_value)
+			if value and value % 1 == 0 and value >= UNCATEGORIZED_VALUE and value <= 14 then
+				config:w_value(CONFIG_SECTION, mod_id, tostring(value))
+				migrated_assignments = migrated_assignments + 1
+			end
+		end
+	end
+	if legacy:section_exist("mcm") and legacy:line_exist("mcm", "mcm/mcm_about/dxml") then
+		local force_english = legacy:r_value("mcm", "mcm/mcm_about/dxml", 1, false)
+		config:w_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, force_english)
+		migrated_locale = true
+	end
+	if migrated_assignments > 0 or migrated_locale then
+		-- Commit destination first. If saving fails, legacy state remains intact.
+		config:save()
+		dbg_log(
+			"migrated legacy CMC state: assignments=%d, locale=%s",
+			migrated_assignments,
+			tostring(migrated_locale)
+		)
+	end
+
+	local legacy_changed = remove_section_lines(legacy, CONFIG_SECTION)
+	legacy_changed = remove_section_lines(legacy, CAT_CONFIG_SECTION) or legacy_changed
+	if legacy:section_exist("mcm") then
+		local legacy_mcm_keys = {
+			"mcm/mcm_about/dxml",
+			"mcm/elseform_cmc_manage/new_name",
+			"mcm/elseform_cmc_manage/new_pinned",
+		}
+		for i = 1, #legacy_mcm_keys do
+			local key = legacy_mcm_keys[i]
+			if legacy:line_exist("mcm", key) then
+				legacy:remove_line("mcm", key)
+				legacy_changed = true
+			end
+		end
+	end
+	if legacy_changed then
+		legacy:save()
+		dbg_log("removed legacy CMC state from axr_options.ltx")
+	end
+	legacy_config_processed = true
+end
+
+local function get_cmc_config()
+	if not cmc_config then
+		cmc_config = ini_file_ex(CONFIG_PATH, true)
+		assert(cmc_config, "CMC could not open " .. CONFIG_PATH)
+	end
+	migrate_legacy_config(cmc_config)
+	if not cmc_config:line_exist(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY) then
+		cmc_config:w_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, false)
+		cmc_config:save()
+	end
+	return cmc_config
+end
+
+local function parse_custom_category(value)
+	local pinned, name = tostring(value or ""):match("^%s*([01])%s*,(.*)$")
+	name = name and name:match("^%s*(.-)%s*$") or ""
+	if not pinned or name == "" then return nil end
+	return name, pinned == "1"
+end
+
+local function write_custom_category(config, value, name, pinned)
+	config:w_value(
+		CUSTOM_CAT_CONFIG_SECTION,
+		tostring(value),
+		string.format("%d,%s", pinned and 1 or 0, name)
+	)
+end
+
+local function cleanup_old_custom_format(config)
+	if not config:section_exist(CAT_CONFIG_SECTION) then return end
+	local removed_values = {}
+	local changed = false
+	for key, _ in pairs(config:collect_section(CAT_CONFIG_SECTION) or {}) do
+		local value, suffix = tostring(key):match("^(%d+)_(%a+)$")
+		value = tonumber(value)
+		local is_custom_field = value and value >= 1000
+			and (suffix == "name" or suffix == "pinned" or suffix == "deleted")
+		if key == "next_id" or is_custom_field then
+			config:remove_line(CAT_CONFIG_SECTION, key)
+			changed = true
+			if is_custom_field then removed_values[value] = true end
+		end
+	end
+	if changed and config:section_exist(CONFIG_SECTION) then
+		for mod_id, assigned_value in pairs(config:collect_section(CONFIG_SECTION) or {}) do
+			local value = tonumber(assigned_value)
+			if value and removed_values[value]
+				and not config:line_exist(CUSTOM_CAT_CONFIG_SECTION, tostring(value)) then
+				config:w_value(CONFIG_SECTION, mod_id, tostring(UNCATEGORIZED_VALUE))
+			end
+		end
+	end
+	if changed then
+		config:save()
+		dbg_log("removed old-format custom categories without migration")
+	end
+end
+
+function get_force_english_mcm()
+	return get_cmc_config():r_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, 1, false)
+end
+
+function set_force_english_mcm(value)
+	local config = get_cmc_config()
+	config:w_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, value and true or false)
+	config:save()
+end
+
+local default_categories = {
+	{ id = "favorites", value = 14, text = "ui_mcm_elseform_cmc_category_favorites", builtin = true, pinned = true },
+	{ id = "ui", value = 1, text = "ui_mcm_elseform_cmc_category_ui", builtin = true },
+	{ id = "gameplay", value = 2, text = "ui_mcm_elseform_cmc_category_gameplay", builtin = true },
+	{ id = "graphics", value = 3, text = "ui_mcm_elseform_cmc_category_graphics", builtin = true },
+	{ id = "crafting", value = 4, text = "ui_mcm_elseform_cmc_category_crafting", builtin = true },
+	{ id = "inventory", value = 5, text = "ui_mcm_elseform_cmc_category_inventory", builtin = true },
+	{ id = "weapons", value = 6, text = "ui_mcm_elseform_cmc_category_weapons", builtin = true },
+	{ id = "pda", value = 7, text = "ui_mcm_elseform_cmc_category_pda", builtin = true },
+	{ id = "audio", value = 8, text = "ui_mcm_elseform_cmc_category_audio", builtin = true },
+	{ id = "animation", value = 9, text = "ui_mcm_elseform_cmc_category_animation", builtin = true },
+	{ id = "controls", value = 10, text = "ui_mcm_elseform_cmc_category_controls", builtin = true },
+	{ id = "world", value = 11, text = "ui_mcm_elseform_cmc_category_world", builtin = true },
+	{ id = "ai", value = 12, text = "ui_mcm_elseform_cmc_category_ai", builtin = true },
+	{ id = "system", value = 13, text = "ui_mcm_elseform_cmc_category_system", builtin = true },
+	{ id = "other", value = OTHER_VALUE, text = "ui_mcm_elseform_cmc_category_other", builtin = true },
 }
 
 local uncategorized_definition = {
@@ -42,74 +215,83 @@ local default_assignments = {
 	["21_game"] = 2,
 	["3d_scopes"] = 6,
 	["EFT_ADS"] = 6,
-	["RF_package_patch"] = 7,
-	["SMR"] = 2,
+	["RF_package_patch"] = 2,
+	["SMR"] = 11,
 	["SortingPlus"] = 5,
 	["ab"] = 12,
 	["ag"] = 12,
-	["aol_hf"] = 4,
+	["aol_hf"] = 11,
 	["ap"] = 12,
 	["ape"] = 7,
 	["at"] = 12,
-	["auto_looter"] = 5,
+	["atue"] = 7,
+	["auto_looter"] = 2,
 	["beef_nvg"] = 3,
 	["better_upgrade_tooltips"] = 4,
 	["body_health_system"] = 2,
 	["campfire_placeable"] = 2,
-	["campfires_on_map"] = 7,
+	["campfires_on_map"] = 2,
 	["companion_anti_awol"] = 12,
 	["craft_from_stashes"] = 4,
-	["craft_in_tooltip"] = 1,
-	["crpmcm"] = 9,
-	["customsquadsize"] = 12,
-	["demonized_dialog_fov"] = 1,
+	["craft_in_tooltip"] = 4,
+	["crpmcm"] = 10,
+	["customsquadsize"] = 2,
+	["demonized_dialog_fov"] = 10,
 	["demonized_ledge_grabbing"] = 2,
-	["dii"] = 1,
-	["dit"] = 2,
-	["dorn_dont_reequip_pda"] = 2,
+	["dii"] = 5,
+	["dit"] = 5,
+	["dorn_dont_reequip_pda"] = 7,
 	["dorn_faster_skinning"] = 2,
 	["dorn_free_zoom"] = 14,
+	["dorn_giant_jump"] = 2,
 	["dorn_prone_fix"] = 2,
 	["dotmarks"] = 1,
 	["dph_loot_cond"] = 2,
 	["drop_item"] = 2,
 	["drx_da"] = 11,
 	["dynamic_cover"] = 2,
+	["dynamic_leans_and_crouch"] = 10,
 	["efp_ui"] = 1,
-	["elseform_fih"] = 5,
+	["elseform_der"] = 2,
+	["elseform_fih"] = 1,
+	["elseform_fits"] = 6,
 	["elseform_inspect"] = 6,
 	["elseform_itts"] = 1,
+	["elseform_iwh"] = 6,
+	["elseform_lchud"] = 1,
 	["elseform_neat_ui_tweaks"] = 1,
+	["elseform_nut"] = 5,
 	["exo"] = 2,
 	["exo_power"] = 2,
-	["extra_level_transitions"] = 2,
+	["extra_level_transitions"] = 11,
 	["fail_task_mod"] = 7,
-	["fddar"] = 9,
+	["fddar"] = 5,
 	["fftd"] = 2,
 	["fmode_sound"] = 6,
 	["free_zoom"] = 10,
-	["gggf"] = 2,
+	["gggf"] = 13,
 	["glowsticks"] = 2,
 	["grok_artefacts_bip"] = 2,
+	["grok_bo_weapon_tables"] = 6,
 	["haru_quick_action_wheel_mcm"] = 1,
-	["hideout_cat_settings"] = 4,
+	["hideout_cat_settings"] = 11,
 	["idiots"] = 12,
 	["item_artefact"] = 2,
-	["item_icon_info"] = 5,
+	["item_icon_info"] = 1,
 	["laser_settings"] = 6,
-	["liz_inex"] = 9,
+	["liz_inex"] = 10,
 	["lower_weapon_sprint"] = 6,
 	["magnifier_switch"] = 6,
 	["mark_switch"] = 6,
 	["meat_spoiling"] = 2,
 	["milpda"] = 7,
-	["more_measurement_task_maps"] = 7,
-	["nerfs"] = 7,
+	["more_measurement_task_maps"] = 2,
+	["nerfs"] = 2,
 	["new_tasks_addon"] = 7,
 	["npe"] = 13,
-	["npe_module"] = 2,
+	["npe_module"] = 13,
 	["oleh_sounds"] = 8,
-	["outfitdrop"] = 11,
+	["outfitdrop"] = 2,
 	["patches_by_hotkey"] = 13,
 	["pawsys"] = 1,
 	["pda_inter"] = 14,
@@ -119,9 +301,9 @@ local default_assignments = {
 	["rad_status_icon_msv"] = 1,
 	["rax_ammo_check"] = 14,
 	["rax_mmt"] = 1,
-	["remember_outfit_belt"] = 5,
+	["remember_outfit_belt"] = 2,
 	["reworked_rf_receiver"] = 8,
-	["safespawn"] = 12,
+	["safespawn"] = 2,
 	["scop"] = 6,
 	["seamless_sort"] = 5,
 	["serious_the_job_can_wait"] = 7,
@@ -129,32 +311,381 @@ local default_assignments = {
 	["skill_system"] = 2,
 	["smooth_prog"] = 2,
 	["soulslike"] = 2,
-	["speed"] = 2,
+	["speed"] = 10,
 	["ssfx_module"] = 3,
 	["stealth"] = 2,
-	["supgrades"] = 2,
+	["supgrades"] = 6,
 	["targetID"] = 1,
-	["tmmr"] = 12,
+	["tmmr"] = 13,
 	["toggle_scope"] = 6,
-	["uas"] = 9,
+	["uas"] = 13,
 	["uicellcontainer_optimize"] = 5,
 	["unusable_parts_handler"] = 5,
+	["utlf"] = 6,
 	["varefined"] = 8,
 	["ver_pistol_swap"] = 6,
-	["weapon_cover_tilt"] = 9,
+	["weapon_cover_tilt"] = 6,
 	["weather_weights_control"] = 11,
 	["wepl_hit_effect"] = 8,
 	["wpo"] = 2,
 	["xlibs"] = 13,
 	["yasc"] = 2,
-	["zone_keeper"] = 13,
+	["zone_keeper"] = 4,
 }
 
+local loaded_categories = {}
 local category_by_value = {}
-for i = 1, #category_definitions do
-	category_by_value[category_definitions[i].value] = category_definitions[i]
+local next_custom_id = 1000
+
+local manage_group_ref = nil
+
+local function get_cat_display_name(cat)
+	if not cat then
+		dbg_log("get_cat_display_name(nil) -> ''")
+		return ""
+	end
+	if type(cat) == "number" or type(cat) == "string" then
+		cat = category_by_value[tonumber(cat)]
+	end
+	if not cat then
+		dbg_log("get_cat_display_name(unknown) -> ''")
+		return ""
+	end
+	local res
+	if cat.name and cat.name ~= "" then
+		res = cat.name
+	elseif cat.text then
+		res = game.translate_string(cat.text)
+	else
+		res = cat.id or tostring(cat.value or "")
+	end
+	dbg_log("get_cat_display_name(val=%s, id=%s) -> '%s'", tostring(cat.value), tostring(cat.id), tostring(res))
+	return res
 end
-category_by_value[UNCATEGORIZED_VALUE] = uncategorized_definition
+
+local function load_categories()
+	local config = get_cmc_config()
+	cleanup_old_custom_format(config)
+	dbg_log("load_categories() start. section_exist=%s", tostring(config:section_exist(CAT_CONFIG_SECTION)))
+	loaded_categories = {}
+	category_by_value = {}
+	
+	for i = 1, #default_categories do
+		local base = default_categories[i]
+		local cat = {
+			value = base.value,
+			id = base.id,
+			text = base.text,
+			name = base.name,
+			pinned = base.pinned,
+			deleted = base.deleted,
+			builtin = true,
+			orig_order = i
+		}
+		if config:section_exist(CAT_CONFIG_SECTION) then
+			local pfx = tostring(cat.value) .. "_"
+			local override_name = config:r_value(CAT_CONFIG_SECTION, pfx .. "name", 0, "")
+			if override_name ~= "" then cat.name = override_name end
+			cat.pinned = config:r_value(CAT_CONFIG_SECTION, pfx .. "pinned", 1, cat.pinned or false)
+			cat.deleted = config:r_value(CAT_CONFIG_SECTION, pfx .. "deleted", 1, false)
+		end
+		loaded_categories[#loaded_categories + 1] = cat
+		category_by_value[cat.value] = cat
+		dbg_log("  [builtin] val=%d, id='%s', name='%s', pinned=%s, deleted=%s", cat.value, cat.id, tostring(cat.name or ""), tostring(cat.pinned), tostring(cat.deleted))
+	end
+	
+	next_custom_id = 1000
+	local seen_names = {}
+	for _, cat in ipairs(loaded_categories) do
+		if cat.builtin and not cat.deleted then
+			seen_names[get_cat_display_name(cat):lower()] = true
+		end
+	end
+	local custom_categories = {}
+	if config:section_exist(CUSTOM_CAT_CONFIG_SECTION) then
+		for key, encoded in pairs(config:collect_section(CUSTOM_CAT_CONFIG_SECTION) or {}) do
+			local value = tonumber(key)
+			if value and value >= 1000 and value % 1 == 0 then
+				if value >= next_custom_id then next_custom_id = value + 1 end
+				local name, pinned = parse_custom_category(encoded)
+				if not name then
+					dbg_log("  [custom] skipping malformed category val=%d", value)
+				else
+					custom_categories[#custom_categories + 1] = {
+						value = value,
+						id = tostring(value),
+						name = name,
+						pinned = pinned,
+						deleted = false,
+						builtin = false,
+						orig_order = 100 + value,
+					}
+				end
+			end
+		end
+	end
+	table.sort(custom_categories, function(a, b) return a.value < b.value end)
+	for i = 1, #custom_categories do
+		local cat = custom_categories[i]
+		if seen_names[cat.name:lower()] then
+			dbg_log("  [custom] skipping duplicate category val=%d, name='%s'", cat.value, cat.name)
+		else
+			seen_names[cat.name:lower()] = true
+			loaded_categories[#loaded_categories + 1] = cat
+			category_by_value[cat.value] = cat
+			dbg_log("  [custom] loaded val=%d, name='%s', pinned=%s", cat.value, cat.name, tostring(cat.pinned))
+		end
+	end
+	category_by_value[UNCATEGORIZED_VALUE] = uncategorized_definition
+	dbg_log("load_categories() done. total loaded=%d, next_custom_id=%d", #loaded_categories, next_custom_id)
+end
+
+local draft_new_name = ""
+local draft_new_pinned = false
+local pending_custom_edits = {}
+
+local function get_new_name()
+	return draft_new_name
+end
+
+local function set_new_name(val)
+	draft_new_name = tostring(val or ""):match("^%s*(.-)%s*$") or ""
+end
+
+-- True if any non-deleted category (other than exclude_val) already displays
+-- as name_lower. exclude_val nil matches nothing, so a new-category check can
+-- omit it.
+local function is_duplicate_name(name_lower, exclude_val)
+	for _, cat in ipairs(loaded_categories) do
+		if cat.value ~= exclude_val and not cat.deleted and get_cat_display_name(cat):lower() == name_lower then
+			return true
+		end
+	end
+	return false
+end
+
+-- Persists the staged new-category name/pinned pair (if any) into
+-- CUSTOM_CAT_CONFIG_SECTION. Called from on_mcm_apply, i.e. only when the user
+-- commits the whole MCM page via Apply -- never on a per-field blur.
+local function commit_staged_category()
+	if draft_new_name == "" then return end
+	local config = get_cmc_config()
+	if is_duplicate_name(draft_new_name:lower()) then
+		dbg_log("  rejected duplicate staged category name '%s' on apply", draft_new_name)
+		return
+	end
+	local new_val = next_custom_id
+	write_custom_category(config, new_val, draft_new_name, draft_new_pinned)
+	next_custom_id = new_val + 1
+	config:save()
+	dbg_log("  created new category on apply: val=%d, name='%s', pinned=%s", new_val, draft_new_name, tostring(draft_new_pinned))
+end
+
+local function get_new_pinned()
+	return draft_new_pinned
+end
+
+local function set_new_pinned(val)
+	draft_new_pinned = (val == true)
+end
+
+local function get_manage_val(val, prop)
+	local cat = category_by_value[tonumber(val)]
+	local res
+	if not cat then
+		if prop == "name" then res = "" else res = false end
+	elseif prop == "name" then
+		res = cat.name or ""
+	elseif prop == "pinned" then
+		res = cat.pinned or false
+	elseif prop == "deleted" then
+		res = cat.deleted or false
+	else
+		res = false
+	end
+	dbg_log("get_manage_val(val=%s, prop='%s') -> %s", tostring(val), tostring(prop), tostring(res))
+	return res
+end
+
+local function get_manage_default(val, prop)
+	local cat = category_by_value[tonumber(val)]
+	local res
+	if not cat then
+		if prop == "name" then res = "" else res = false end
+	elseif cat.builtin then
+		local ship = default_categories[cat.orig_order]
+		if prop == "name" then res = ""
+		elseif prop == "pinned" then res = ship.pinned or false
+		elseif prop == "deleted" then res = false
+		else res = false end
+	else
+		if prop == "name" then res = cat.name or ""
+		elseif prop == "pinned" then res = cat.pinned or false
+		elseif prop == "deleted" then res = false
+		else res = false end
+	end
+	dbg_log("get_manage_default(val=%s, prop='%s') -> %s", tostring(val), tostring(prop), tostring(res))
+	return res
+end
+
+local function set_manage_val(val, prop, value)
+	dbg_log("set_manage_val(val=%s, prop='%s', value=%s)", tostring(val), tostring(prop), tostring(value))
+	local config = get_cmc_config()
+	local pfx = tostring(val) .. "_"
+	local num_val = tonumber(val)
+	local cat = category_by_value[num_val]
+	local new_name = nil
+	if prop == "name" then
+		new_name = tostring(value or ""):match("^%s*(.-)%s*$") or ""
+		if new_name == "" then
+			dbg_log("  empty name for val=%s ignored, keeping existing name", tostring(val))
+			return
+		end
+		if is_duplicate_name(new_name:lower(), num_val) then
+			dbg_log("  rejected duplicate category name '%s' for val=%s", new_name, tostring(val))
+			return
+		end
+	end
+	if cat and not cat.builtin then
+		local pending = pending_custom_edits[num_val] or {}
+		pending_custom_edits[num_val] = pending
+		if prop == "name" then
+			pending.name = new_name
+		elseif prop == "pinned" then
+			pending.pinned = value and true or false
+		elseif prop == "deleted" then
+			pending.deleted = value and true or false
+		end
+		dbg_log("  staged custom category edit for val=%d", num_val)
+		return
+	end
+	if prop == "name" then
+		config:w_value(CAT_CONFIG_SECTION, pfx .. "name", new_name)
+	elseif prop == "pinned" then
+		config:w_value(CAT_CONFIG_SECTION, pfx .. "pinned", value and true or false)
+	elseif prop == "deleted" then
+		local is_deleted = value and true or false
+		config:w_value(CAT_CONFIG_SECTION, pfx .. "deleted", is_deleted)
+		if is_deleted and config:section_exist(CONFIG_SECTION) then
+			local sec = config:collect_section(CONFIG_SECTION)
+			for mod_id, assigned_val in pairs(sec) do
+				if tonumber(assigned_val) == num_val then
+					config:w_value(CONFIG_SECTION, mod_id, tostring(UNCATEGORIZED_VALUE))
+				end
+			end
+		end
+	end
+	config:save()
+	dbg_log("  saved CMC config")
+end
+
+local function reassign_category(config, value)
+	if not config:section_exist(CONFIG_SECTION) then return end
+	for mod_id, assigned_value in pairs(config:collect_section(CONFIG_SECTION) or {}) do
+		if tonumber(assigned_value) == value then
+			config:w_value(CONFIG_SECTION, mod_id, tostring(UNCATEGORIZED_VALUE))
+		end
+	end
+end
+
+local function commit_staged_custom_edits()
+	local config = get_cmc_config()
+	local changed = false
+	for value, edit in pairs(pending_custom_edits) do
+		local cat = category_by_value[value]
+		if cat and not cat.builtin then
+			if edit.deleted then
+				config:remove_line(CUSTOM_CAT_CONFIG_SECTION, tostring(value))
+				reassign_category(config, value)
+			else
+				local name = edit.name or cat.name
+				local pinned = edit.pinned
+				if pinned == nil then pinned = cat.pinned end
+				write_custom_category(config, value, name, pinned)
+			end
+			changed = true
+		end
+	end
+	pending_custom_edits = {}
+	if changed then
+		config:save()
+		dbg_log("  committed staged custom category edits")
+	end
+end
+
+rebuild_manage_group = function()
+	dbg_log("rebuild_manage_group() start. manage_group_ref=%s", tostring(manage_group_ref ~= nil))
+	if not manage_group_ref then return end
+	local rows = {}
+	rows[#rows + 1] = { id = "manage_title", type = "title", text = "ui_mcm_elseform_cmc_manage_title" }
+	rows[#rows + 1] = { id = "manage_desc", type = "desc", text = "ui_mcm_elseform_cmc_manage_desc" }
+	rows[#rows + 1] = { 
+		id = "new_name", type = "input", val = 0, def = "", no_str = true, 
+		caption = game.translate_string("ui_mcm_elseform_cmc_manage_new_name"),
+		curr = { get_new_name },
+		functor = { set_new_name }
+	}
+	rows[#rows + 1] = { 
+		id = "new_pinned", type = "check", val = 1, def = false, 
+		hint = "ui_mcm_elseform_cmc_manage_new_pinned",
+		curr = { get_new_pinned },
+		functor = { set_new_pinned }
+	}
+	rows[#rows + 1] = { id = "manage_sep1", type = "line" }
+
+	for i = 1, #loaded_categories do
+		local cat = loaded_categories[i]
+		if cat.id ~= "favorites" and cat.id ~= "all" and cat.id ~= "uncategorized" and not cat.deleted then
+			local pfx = tostring(cat.value) .. "_"
+			rows[#rows + 1] = { id = pfx.."desc", type = "desc", text = get_cat_display_name(cat), clr = {255, 100, 255, 100} }
+			rows[#rows + 1] = { 
+				id = pfx .. "name", type = "input", val = 0, no_str = true, caption = game.translate_string("ui_mcm_elseform_cmc_manage_name"),
+				def = { get_manage_default, cat.value, "name" },
+				curr = { get_manage_val, cat.value, "name" }, 
+				functor = { set_manage_val, cat.value, "name" } 
+			}
+			rows[#rows + 1] = { 
+				id = pfx .. "pinned", type = "check", val = 1, hint = "ui_mcm_elseform_cmc_manage_pinned",
+				def = { get_manage_default, cat.value, "pinned" },
+				curr = { get_manage_val, cat.value, "pinned" }, 
+				functor = { set_manage_val, cat.value, "pinned" } 
+			}
+			rows[#rows + 1] = { 
+				id = pfx .. "deleted", type = "check", val = 1, hint = "ui_mcm_elseform_cmc_manage_deleted",
+				def = { get_manage_default, cat.value, "deleted" },
+				curr = { get_manage_val, cat.value, "deleted" }, 
+				functor = { set_manage_val, cat.value, "deleted" } 
+			}
+			rows[#rows + 1] = { id = pfx .. "sep", type = "line" }
+		end
+	end
+
+	rows[#rows + 1] = { id = "delete_all_categories_notice", type = "desc", text = "ui_mcm_elseform_cmc_delete_all_categories_notice", clr = {255, 200, 80, 80} }
+	rows[#rows + 1] = {
+		id = "delete_all_categories", type = "button",
+		hint = "elseform_cmc_delete_all_categories",
+		functor_ui = {
+			function(mcm_ui)
+				dbg_log("delete_all_categories button clicked!")
+				delete_all_categories_action(mcm_ui)
+			end,
+		}
+	}
+	rows[#rows + 1] = {
+		id = "restore_default_categories", type = "button",
+		hint = "elseform_cmc_restore_default_categories",
+		functor_ui = {
+			function(mcm_ui)
+				dbg_log("restore_default_categories button clicked!")
+				restore_default_categories_action(mcm_ui)
+			end,
+		}
+	}
+	rows[#rows + 1] = { id = "manage_sep2", type = "line" }
+
+	manage_group_ref.gr = rows
+	dbg_log("rebuild_manage_group() done. total rows=%d", #rows)
+end
 
 local function assignment_option_id(group_id)
 	return "assign_" .. group_id
@@ -162,74 +693,88 @@ end
 
 local function category_options()
 	local content = {}
-	for i = 1, #category_definitions do
-		content[#content + 1] = { category_definitions[i].value, category_definitions[i].text }
+	for i = 1, #loaded_categories do
+		local cat = loaded_categories[i]
+		if not cat.deleted then
+			content[#content + 1] = { cat.value, get_cat_display_name(cat) }
+		end
 	end
 	content[#content + 1] = { uncategorized_definition.value, uncategorized_definition.text }
+	dbg_log("category_options() returning %d entries", #content)
 	return content
 end
 
 local function organizer_caption(group)
 	local text = game.translate_string(group.text or "ui_mcm_menu_" .. group.id)
-	-- MCM tree captions may contain inline color controls. They are interpreted
-	-- by Sota's option captions but display literally under stock MCM. Organizer
-	-- captions therefore use plain text in both layouts; normal tree colors are
-	-- left unchanged.
 	return (text:gsub("%%c%b[]", ""))
 end
 
+-- Falls back to default_assignments below when [cmc] has no explicit value,
+-- so first-launch defaults apply dynamically without writing them into config.
 local function read_assignment(group_id)
-	local value = axr_main.config:r_value(CONFIG_SECTION, group_id, 2)
-	return category_by_value[value] or uncategorized_definition
+	local value = get_cmc_config():r_value(CONFIG_SECTION, group_id, 2)
+	local cat = nil
+	if value ~= nil then
+		cat = category_by_value[tonumber(value)]
+	else
+		local def_val = default_assignments[group_id]
+		cat = def_val and category_by_value[def_val]
+	end
+	if not cat or cat.deleted then
+		cat = uncategorized_definition
+	end
+	dbg_log("read_assignment('%s') -> val=%s, cat_id='%s'", group_id, tostring(value), cat.id)
+	return cat
 end
 
-local function remove_assignment(group_id)
-	if not axr_main.config:line_exist(CONFIG_SECTION, group_id) then
-		return
-	end
-	axr_main.config:remove_line(CONFIG_SECTION, group_id)
-	if axr_main.config.cache then
-		axr_main.config.cache[CONFIG_SECTION .. "&" .. group_id] = nil
-	end
-	config_dirty = true
-end
 
 local function get_assignment(group_id)
-	return read_assignment(group_id).value
+	local cat = read_assignment(group_id)
+	return cat.value
 end
 
 local function get_default_assignment(group_id)
 	local value = default_assignments[group_id]
-	return value == nil and UNCATEGORIZED_VALUE or value
-end
-
-local function apply_initial_assignments()
-	if axr_main.config:section_exist(CONFIG_SECTION) then
-		return
-	end
-	for group_id, value in pairs(default_assignments) do
-		axr_main.config:w_value(CONFIG_SECTION, group_id, value)
-	end
-	config_dirty = true
+	local res = value == nil and UNCATEGORIZED_VALUE or value
+	dbg_log("get_default_assignment('%s') -> %s", group_id, tostring(res))
+	return res
 end
 
 local function set_assignment(group_id, value)
+	dbg_log("set_assignment(group_id='%s', value=%s)", group_id, tostring(value))
 	local definition = category_by_value[tonumber(value)] or uncategorized_definition
-	if definition.value == UNCATEGORIZED_VALUE then
-		remove_assignment(group_id)
-	else
-		axr_main.config:w_value(CONFIG_SECTION, group_id, definition.value)
-		config_dirty = true
-	end
+	local config = get_cmc_config()
+	config:w_value(CONFIG_SECTION, group_id, tostring(definition.value))
+	config_dirty = true
+	config:save()
+	dbg_log("  saved assignment: [%s] -> %s (%s)", group_id, tostring(definition.value), definition.id)
 end
 
 local function redraw_current_page(mcm_ui)
 	if mcm_ui and mcm_ui.last_curr_tree and mcm_ui.last_path then
+		dbg_log("redraw_current_page() tree=%s, path='%s'", tostring(mcm_ui.last_curr_tree), tostring(mcm_ui.last_path))
 		mcm_ui:Reset_opt(mcm_ui.last_curr_tree, mcm_ui.last_path)
 	end
 end
 
+-- Same tree/path reset UI_MCM:On_Accept() performs after a normal Apply, so
+-- the button's own effect is immediately visible as an exit to the MCM root
+-- tree instead of requiring a separate Apply click to leave the page.
+local function exit_to_main_tree(mcm_ui)
+	if not mcm_ui then
+		return
+	end
+	dbg_log("exit_to_main_tree()")
+	mcm_ui.active_category = nil
+	mcm_ui.search_filter = nil
+	mcm_ui.last_path = nil
+	mcm_ui.last_curr_tree = nil
+	mcm_ui.cmc_clear_search_on_refresh = true
+	mcm_ui.cmc_root_refresh_pending = true
+end
+
 local function stage_clear_all(assignments, mcm_ui)
+	dbg_log("stage_clear_all() clearing %d assignments", #assignments)
 	local was_batching = mcm_ui.cmc_batching_cache_updates
 	mcm_ui.cmc_batching_cache_updates = true
 	for i = 1, #assignments do
@@ -243,6 +788,80 @@ local function stage_clear_all(assignments, mcm_ui)
 	redraw_current_page(mcm_ui)
 end
 
+-- "All mods", "Favorites", and "Uncategorized" are pseudo-categories baked
+-- into the UI (category_menu, category_options) and are never real editable
+-- entries in stored category sections -- skip them here the same way rebuild_manage_group
+-- already does.
+delete_all_categories_action = function(mcm_ui)
+	dbg_log("delete_all_categories_action fired")
+	local config = get_cmc_config()
+	local deleted_any = false
+	for _, cat in ipairs(loaded_categories) do
+		if cat.id ~= "favorites" and cat.id ~= "all" and cat.id ~= "uncategorized" and not cat.deleted then
+			if cat.builtin then
+				config:w_value(CAT_CONFIG_SECTION, tostring(cat.value) .. "_deleted", true)
+			else
+				config:remove_line(CUSTOM_CAT_CONFIG_SECTION, tostring(cat.value))
+			end
+			deleted_any = true
+		end
+	end
+	if not deleted_any then
+		dbg_log("  delete_all_categories_action: nothing to delete")
+		return
+	end
+	if config:section_exist(CONFIG_SECTION) then
+		local sec = config:collect_section(CONFIG_SECTION)
+		for mod_id, assigned_val in pairs(sec) do
+			local cat = category_by_value[tonumber(assigned_val)]
+			if cat and cat.id ~= "favorites" and cat.id ~= "uncategorized" then
+				config:w_value(CONFIG_SECTION, mod_id, tostring(UNCATEGORIZED_VALUE))
+			end
+		end
+	end
+	config:save()
+	dbg_log("  delete_all_categories_action: deleted all custom/built-in categories, reassigned affected mods to Uncategorized")
+	load_categories()
+	if ui_mcm and ui_mcm.options then
+		refresh_assignments(ui_mcm.options)
+	end
+	rebuild_manage_group()
+	exit_to_main_tree(mcm_ui)
+end
+
+-- Wipes builtin overrides and custom category rows, so load_categories()
+-- falls back to default_categories for everything. Mods assigned to a custom category
+-- (value >= 1000) that no longer exists after the wipe fall back to
+-- Uncategorized; builtin category values (0-14) stay valid either way.
+restore_default_categories_action = function(mcm_ui)
+	dbg_log("restore_default_categories_action fired")
+	local config = get_cmc_config()
+	if config:section_exist(CAT_CONFIG_SECTION) then
+		local sec = config:collect_section(CAT_CONFIG_SECTION)
+		for key, _ in pairs(sec) do
+			config:remove_line(CAT_CONFIG_SECTION, key)
+		end
+	end
+	remove_section_lines(config, CUSTOM_CAT_CONFIG_SECTION)
+	if config:section_exist(CONFIG_SECTION) then
+		local sec = config:collect_section(CONFIG_SECTION)
+		for mod_id, assigned_val in pairs(sec) do
+			local val = tonumber(assigned_val)
+			if val and val >= 1000 then
+				config:w_value(CONFIG_SECTION, mod_id, tostring(UNCATEGORIZED_VALUE))
+			end
+		end
+	end
+	config:save()
+	dbg_log("  restore_default_categories_action: cleared category storage, reassigned mods on removed custom categories to Uncategorized")
+	load_categories()
+	if ui_mcm and ui_mcm.options then
+		refresh_assignments(ui_mcm.options)
+	end
+	rebuild_manage_group()
+	exit_to_main_tree(mcm_ui)
+end
+
 function organizer_path()
 	return MCM_ID .. "/" .. CMC_ID
 end
@@ -252,14 +871,15 @@ function page_selector(path)
 	if not group_id or group_id == MCM_ID then
 		return
 	end
+	dbg_log("page_selector('%s') -> group_id='%s'", tostring(path), group_id)
 	return {
 		id = assignment_option_id(group_id),
 		type = "list",
 		val = 2,
 		def = { get_default_assignment, group_id },
-		content = category_options(),
+		content = { category_options },
 		no_str = true,
-		hint = "elseform_cmc_page_category",
+		hint = "ui_mcm_elseform_cmc_page_category",
 		caption = "ui_mcm_elseform_cmc_page_category",
 		curr = { get_assignment, group_id },
 		functor = { set_assignment, group_id },
@@ -267,6 +887,7 @@ function page_selector(path)
 end
 
 function refresh_assignments(groups)
+	dbg_log("refresh_assignments() start for %d groups", #groups)
 	for i = 1, #groups do
 		local group = groups[i]
 		if group.id == MCM_ID then
@@ -277,16 +898,18 @@ function refresh_assignments(groups)
 		end
 	end
 	if config_dirty then
-		axr_main.config:save()
+		get_cmc_config():save()
 		config_dirty = false
+		dbg_log("  saved dirty config in refresh_assignments")
 	end
+	dbg_log("refresh_assignments() done")
 end
 
 function build_organizer(groups)
-	apply_initial_assignments()
+	dbg_log("build_organizer() start with %d groups", #groups)
+	load_categories()
 	refresh_assignments(groups)
 	local assignments = {}
-	local content = category_options()
 	local mcm_group = nil
 	for i = 1, #groups do
 		local group = groups[i]
@@ -298,7 +921,7 @@ function build_organizer(groups)
 				type = "list",
 				val = 2,
 				def = { get_default_assignment, group.id },
-				content = content,
+				content = { category_options },
 				no_str = true,
 				caption = organizer_caption(group),
 				curr = { get_assignment, group.id },
@@ -322,6 +945,11 @@ function build_organizer(groups)
 			text = "ui_mcm_elseform_cmc_desc",
 		},
 	}
+	-- NOTE: for type="button" rows, Register_Button (ui_mcm.script) always
+	-- prefixes `hint` with "ui_mcm_" itself to resolve the caption string.
+	-- Unlike check/input/list rows (Register_Cap, which detects an existing
+	-- "ui_mcm_" prefix and skips re-adding it), a button's hint must stay
+	-- BARE here or the lookup double-prefixes and misses the string table.
 	local clear_all_button = {
 		id = "clear_all",
 		type = "button",
@@ -329,6 +957,7 @@ function build_organizer(groups)
 	}
 	clear_all_button.functor_ui = {
 		function(mcm_ui)
+			dbg_log("clear_all button clicked!")
 			stage_clear_all(assignments, mcm_ui)
 		end,
 	}
@@ -336,12 +965,15 @@ function build_organizer(groups)
 		rows[#rows + 1] = assignments[i]
 	end
 	rows[#rows + 1] = { id = "actions_separator", type = "line" }
+	rows[#rows + 1] = { id = "clear_all_notice", type = "desc", text = "ui_mcm_elseform_cmc_clear_all_notice", clr = {255, 200, 80, 80} }
 	rows[#rows + 1] = clear_all_button
 	rows[#rows + 1] = { id = "bottom_separator", type = "line" }
 
 	if not mcm_group then
+		dbg_log("build_organizer() warning: mcm_group not found!")
 		return
 	end
+	
 	mcm_group.gr[#mcm_group.gr + 1] = {
 		id = CMC_ID,
 		text = "ui_mcm_menu_elseform_cmc",
@@ -349,9 +981,21 @@ function build_organizer(groups)
 		gr = rows,
 		clr = { 255, 80, 200, 100 }, -- green
 	}
+	
+	manage_group_ref = {
+		id = "elseform_cmc_manage",
+		text = "ui_mcm_menu_elseform_cmc_manage",
+		sh = true,
+		gr = {},
+		clr = { 255, 80, 200, 100 }, -- green
+	}
+	rebuild_manage_group()
+	mcm_group.gr[#mcm_group.gr + 1] = manage_group_ref
+	dbg_log("build_organizer() complete")
 end
 
 function category_menu(groups)
+	dbg_log("category_menu() start with %d groups", #groups)
 	local counts = {}
 	local mcm_group = nil
 	local total = 0
@@ -365,49 +1009,101 @@ function category_menu(groups)
 			total = total + 1
 		end
 	end
-	local favorites = category_definitions[1]
+	
+	local favorites_val = category_by_value[14] or default_categories[1]
+	
 	local result = {}
 	if mcm_group then
 		result[#result + 1] = mcm_group
 	end
-	result[#result + 1] = {
-		id = "elseform_cmc_category_" .. favorites.id,
-		text = favorites.text,
-		_elseform_cmc_virtual_category = favorites.id,
-		_elseform_cmc_category_count = counts[favorites.id] or 0,
-		_elseform_cmc_root_color = { 255, 255, 191, 0 }, -- amber (#FFBF00)
-	}
+	
 	result[#result + 1] = {
 		id = "elseform_cmc_all_mods",
 		text = "ui_mcm_elseform_cmc_category_all",
 		_elseform_cmc_virtual_category = "all",
 		_elseform_cmc_category_count = total,
-		_elseform_cmc_root_color = { 255, 170, 185, 200 }, -- muted blue-gray
+		_elseform_cmc_root_color = { 255, 170, 185, 200 },
 	}
-	for i = 2, #category_definitions do
-		local definition = category_definitions[i]
-		if (counts[definition.id] or 0) > 0 then
-			result[#result + 1] = {
-				id = "elseform_cmc_category_" .. definition.id,
-				text = definition.text,
-				_elseform_cmc_virtual_category = definition.id,
-				_elseform_cmc_category_count = counts[definition.id],
-			}
+	
+	result[#result + 1] = {
+		id = "elseform_cmc_category_" .. favorites_val.id,
+		text = get_cat_display_name(favorites_val),
+		_elseform_cmc_virtual_category = favorites_val.id,
+		_elseform_cmc_category_count = counts[favorites_val.id] or 0,
+		_elseform_cmc_root_color = { 255, 255, 191, 0 },
+	}
+	
+	local pinned_items = {}
+	local unpinned_items = {}
+	
+	local all_cats = {}
+	for i = 1, #loaded_categories do
+		all_cats[#all_cats + 1] = loaded_categories[i]
+	end
+	
+	local sort_dxml = get_force_english_mcm()
+	dbg_log("  sorting categories (dxml_alpha=%s)", tostring(sort_dxml))
+	if sort_dxml then
+		table.sort(all_cats, function(a, b)
+			local name_a = get_cat_display_name(a):lower()
+			local name_b = get_cat_display_name(b):lower()
+			if name_a == name_b then
+				return a.id < b.id
+			end
+			return name_a < name_b
+		end)
+	else
+		table.sort(all_cats, function(a, b)
+			return a.orig_order < b.orig_order
+		end)
+	end
+	
+	for i = 1, #all_cats do
+		local cat = all_cats[i]
+		if cat.id ~= "favorites" and not cat.deleted then
+			local count = counts[cat.id] or 0
+			if count > 0 then
+				local item = {
+					id = "elseform_cmc_category_" .. cat.id,
+					text = get_cat_display_name(cat),
+					_elseform_cmc_virtual_category = cat.id,
+					_elseform_cmc_category_count = count,
+				}
+				if cat.pinned then
+					pinned_items[#pinned_items + 1] = item
+				else
+					unpinned_items[#unpinned_items + 1] = item
+				end
+				dbg_log("  cat '%s' (pinned=%s) count=%d", cat.id, tostring(cat.pinned), count)
+			end
 		end
 	end
+	
+	for i = 1, #pinned_items do
+		result[#result + 1] = pinned_items[i]
+	end
+	
+	for i = 1, #unpinned_items do
+		result[#result + 1] = unpinned_items[i]
+	end
+	
 	if (counts[uncategorized_definition.id] or 0) > 0 then
 		result[#result + 1] = {
 			id = "elseform_cmc_category_" .. uncategorized_definition.id,
 			text = uncategorized_definition.text,
 			_elseform_cmc_virtual_category = uncategorized_definition.id,
 			_elseform_cmc_category_count = counts[uncategorized_definition.id],
-			_elseform_cmc_root_color = { 255, 115, 170, 185 }, -- muted cyan
+			_elseform_cmc_root_color = { 255, 115, 170, 185 },
 		}
+		dbg_log("  cat 'uncategorized' count=%d", counts[uncategorized_definition.id])
 	end
+	
+	dbg_log("category_menu() returning %d root menu entries", #result)
 	return result
 end
 
 function filtered_menu(groups, category, include_pinned)
+	dbg_log("filtered_menu(category='%s', include_pinned=%s) from %d groups", tostring(category), tostring(include_pinned), #groups)
 	local result = {
 		{
 			id = "elseform_cmc_category_back",
@@ -422,5 +1118,49 @@ function filtered_menu(groups, category, include_pinned)
 			result[#result + 1] = group
 		end
 	end
+	dbg_log("filtered_menu() returning %d filtered groups", #result)
 	return result
 end
+
+local function on_mcm_apply()
+	dbg_log("on_mcm_apply() callback fired. committing staged category (if any) and reloading")
+	commit_staged_custom_edits()
+	if draft_new_name ~= "" then
+		load_categories()
+	end
+	commit_staged_category()
+	draft_new_name = ""
+	draft_new_pinned = false
+	load_categories()
+	if ui_mcm and ui_mcm.options then
+		refresh_assignments(ui_mcm.options)
+	end
+	rebuild_manage_group()
+end
+
+local function on_mcm_discard()
+	dbg_log("on_mcm_discard() callback fired. discarding staged category and reloading")
+	draft_new_name = ""
+	draft_new_pinned = false
+	pending_custom_edits = {}
+	load_categories()
+	if ui_mcm and ui_mcm.options then
+		refresh_assignments(ui_mcm.options)
+	end
+	rebuild_manage_group()
+end
+
+-- Registered here at module load, not inside on_game_start(): that hook is
+-- driven by axr_main.script scanning every *.script file and calling
+-- <name>.on_game_start() once per session -- confirmed via the flat-install
+-- log to fire only once, well after the MCM menu is already reachable from
+-- the main menu, and it silently never reaches later scripts in the scan if
+-- an earlier one throws (also observed in the same log, from an unrelated
+-- mod). RegisterScriptCallback/AddScriptCallback are native engine functions
+-- (not defined in any .script file), so calling them unconditionally at
+-- top level is safe and matches how ui_mcm.script itself registers its own
+-- callbacks (AddScriptCallback calls at its own module scope).
+RegisterScriptCallback("mcm_option_change", on_mcm_apply)
+RegisterScriptCallback("mcm_option_discard", on_mcm_discard)
+RegisterScriptCallback("mcm_option_reset", on_mcm_discard)
+RegisterScriptCallback("mcm_option_restore_default", on_mcm_apply)

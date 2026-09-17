@@ -16,20 +16,23 @@ normal **Apply**, **Reset**, and **Cancel** flow and do not modify the original
 mod's option tree. After Apply commits the changes, CMC returns to the category
 root on the next UI frame so native controls are not rebuilt inside the button
 callback. New and unassigned pages appear in both **All mods** and the
-hide-when-empty **Uncategorized** inbox until the user sorts them.
+hide-when-empty **Unassigned** inbox until the user sorts them.
+
+
+A new **Manage categories** page allows you to create custom categories, rename existing ones, and manage which categories are pinned to the top. When the "Force English locale for MCM menus" option is enabled, pinned and unpinned categories are sorted alphabetically. **Delete all categories** wipes every custom and built-in category (reassigning their mods to Unassigned); **Restore default categories** clears the same `[cmc_categories]` state back to CMC's shipped defaults.
 
 ## Default Categories
 
-CMC embeds assignments for all 109 MCM pages curated in its development
+CMC embeds assignments for all 119 MCM pages curated in its development
 profile. On first launch, CMC writes those explicit assignments immediately;
-it does not write empty `Uncategorized` values. On the **Organize mods** page,
+it does not write empty `Unassigned` values. On the **Organize mods** page,
 MCM's standard **Default** button stages the same mapping. Press **Apply** to
 save staged defaults, or **Reset**/**Cancel** to discard them. Assignments for
 pages that are not installed remain dormant and return automatically if the
 mod is reinstalled. Newly discovered pages without an embedded assignment
-appear in **Uncategorized**.
+appear in **Unassigned**.
 
-**Clear all categories** stages every discovered page as Uncategorized. Press
+**Clear all categories** stages every discovered page as Unassigned. Press
 **Apply** to remove their stored `[cmc]` assignments, or **Reset**/**Cancel** to
 discard the staged clear.
 
@@ -80,14 +83,12 @@ display raw `%c[...]` controls; their colored tree names remain unchanged.
 - Other
 
 The first page starts with the pinned **MCM** entry, followed by amber
-**Favorites**, muted blue-gray **All mods**, the non-empty assigned categories,
-and muted cyan **Uncategorized** at the bottom when it contains pages.
-**Organize mods** is the final entry
-inside MCM's own menu and is colored green. Search ignores the selected category
-and searches the complete MCM list. Empty and placeholder search text always
-returns to the category root, including after Apply. **Other** is an ordinary
-explicit category; **Uncategorized** is a smart inbox rather than a stored
-category.
+**Favorites**, muted blue-gray **All mods**, **Pinned** categories, all other
+categories, and muted cyan **Unassigned** at the bottom when it contains pages.
+**Organize mods** and **Manage categories** are the final entries
+inside MCM's own menu and are colored green.
+
+Alphabetical sorting of categories requires the **Force English locale for MCM menus** option to be enabled, which also requires DXML/modded-exes to function correctly. If DXML is unavailable, this feature gracefully falls back to deterministic definition order.
 
 Opening the organizer creates one native combo box per discovered MCM page;
 removing that initial construction pause on very large lists would require a
@@ -95,17 +96,45 @@ paged or virtualized organizer redesign.
 
 ## Storage
 
-Explicit assignments use a dedicated section and the original top-level MCM ID:
+CMC stores all mutable state in
+`gamedata/configs/plugins/elseform_cmc.ltx`. The file is created at runtime so
+installing or updating the mod does not replace player state with a packaged
+copy. Explicit assignments use the original top-level MCM ID:
 
 ```ini
 [cmc]
 lower_weapon_sprint = 6
+
+[cmc_categories]
+1_pinned = true
+
+[cmc_custom_categories]
+1000 = 1,My category
+1001 = 0,QoL, tools
+
+[cmc_settings]
+force_english_mcm = false
 ```
 
 The stored value is the selected category number. Other is stored explicitly as
-`0`; a missing entry means Uncategorized and appears in its smart inbox and All
+`0`; a missing entry means Unassigned and appears in its smart inbox and All
 mods. The organizer and per-page selector do not move or rename the original MCM
-option tree.
+option tree. Each custom-category row stores `<pinned 0/1>,<name>`. Everything
+after the first comma belongs to the name, so names may contain commas. CMC
+calculates the next custom ID from existing numeric rows; no counter is stored.
+
+On first use, CMC copies legacy `[cmc]` assignments and
+`mcm/mcm_about/dxml` from `axr_options.ltx` into the dedicated file. Only
+shipped category values (`-1` and `0` through `14`) are accepted. CMC saves the
+destination before removing all legacy `[cmc]`, `[cmc_categories]`, locale, and
+manager-draft values. The old section headers may remain empty because the
+engine INI API cannot remove sections. Edit either file only while the game is
+closed.
+
+Development-only multi-key custom-category rows are not migrated. CMC removes
+them and resets assignments pointing only to those removed categories to
+Unassigned. Built-in overrides retain their existing `<value>_name`,
+`<value>_pinned`, and `<value>_deleted` representation.
 
 ## Installation and Load Order
 
@@ -117,6 +146,17 @@ support both stock MCM and Sota UI Rework.
 
 ## Playtest
 
+- Start with legacy assignments and locale setting in `axr_options.ltx`, open
+  MCM, and verify valid values migrate before legacy values are removed.
+- Include an invalid legacy category value and verify it is discarded rather
+  than copied.
+- Verify `gamedata/configs/plugins/elseform_cmc.ltx` is created with
+  `force_english_mcm = false` and contains all later category changes.
+- Create, rename, pin, and delete custom categories; verify each custom category
+  remains one `[cmc_custom_categories]` row and deleted rows disappear.
+- Create a category whose name contains commas and verify it round-trips intact.
+- Toggle **Force English locale for MCM menus**, Apply, restart, and verify the
+  value and locale behavior survive without recreating `mcm/mcm_about/dxml`.
 - Assign several pages, press Apply, and reopen MCM to verify persistence.
 - Verify normal Apply returns to CMC's category root without closing MCM;
   options that require a game or video restart retain MCM's close/restart flow.
@@ -127,16 +167,16 @@ support both stock MCM and Sota UI Rework.
   the category root appears without a crash.
 - Press Default on an individual mod page and verify it resets that mod's own
   settings without changing its CMC category.
-- With no `[cmc]` section, open MCM and verify all 109 embedded assignments are
-  saved on first launch without explicit Uncategorized entries.
+- With no `[cmc]` section, open MCM and verify all 119 embedded assignments are
+  saved on first launch without explicit Unassigned entries.
 - On Organize mods, press **Default** and verify all embedded assignments are
-  staged while unknown pages become Uncategorized.
+  staged while unknown pages become Unassigned.
 - Verify Reset/Cancel discard the staged defaults and Apply stores them.
-- Press **Clear all categories** and verify every page becomes Uncategorized;
+- Press **Clear all categories** and verify every page becomes Unassigned;
   verify Reset/Cancel discard the staged clear and Apply removes every current
   assignment.
 - Assign one page explicitly to Other and verify it appears in the Other root
-  category; clear another assignment and verify it appears in Uncategorized and
+  category; clear another assignment and verify it appears in Unassigned and
   All mods.
 - Verify the first opening selects MCM > About and later openings restore the
   last real page.
@@ -144,15 +184,14 @@ support both stock MCM and Sota UI Rework.
 - Enter several categories, then return with `< Categories`.
 - Open nested two- and three-column MCM pages.
 - Verify Favorites remains the most distinct root entry; All mods uses muted
-  blue-gray, and Uncategorized uses muted cyan when visible.
-- Verify Uncategorized is hidden when empty and returns at the bottom when a
+  blue-gray, and Unassigned uses muted cyan when visible.
+- Verify Unassigned is hidden when empty and returns at the bottom when a
   category assignment is cleared.
 - Search from the category page and from inside a category.
 - Clear Search and press Apply from an option page; verify the full category
   root returns instead of showing only the pinned MCM entry.
 - Compare navigation responsiveness in Favorites, a populated category, and All
-  mods; verify that tree-building debug lines appear only when MCM debug logging
-  is explicitly enabled.
+  mods; verify no `[CMC]` tree-building debug lines are emitted.
 - Apply, reset, and restore defaults for several original mod settings.
 - Verify MCM keybind lists, conflicts, and presets.
 - Bind a key that `mcm_key_localization.ltx` does not name and verify the box
@@ -165,3 +204,9 @@ support both stock MCM and Sota UI Rework.
   verify organizer titles do not expose literal `%c[...]` controls.
 - Verify CMC adds no separator above the original page content.
 - Exercise any mod that calls `ui_mcm.open_to(path)` directly.
+- Create a custom category, delete a built-in one, then press **Restore
+  default categories**, Apply, and verify built-ins return to their shipped
+  state while any mod on the removed custom category becomes Unassigned.
+- Open All mods, enter Favorites (or any category), open a mod's own page,
+  and verify MCM reports no pending changes until you actually edit
+  something.

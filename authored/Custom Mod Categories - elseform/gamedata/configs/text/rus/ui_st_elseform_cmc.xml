@@ -2,11 +2,16 @@
 <string_table>
 	<string id="ui_mcm_menu_elseform_cmc"><text>Настроить категории</text></string>
 	<string id="ui_mcm_elseform_cmc_title"><text>Custom Mod Categories</text></string>
-	<string id="ui_mcm_elseform_cmc_desc"><text>Выберите категорию для каждого мода. «По умолчанию» подставляет встроенные назначения CMC; «Убрать все категории» подготавливает их удаление; «Применить» сохраняет изменения.</text></string>
+	<string id="ui_mcm_elseform_cmc_desc"><text>Выберите категорию для каждого мода. «По умолчанию» подставляет встроенные назначения CMC; «Снять категории со всех модов» подготавливает их удаление; «Применить» сохраняет изменения.</text></string>
 	<string id="ui_mcm_elseform_cmc_page_category"><text>Категория</text></string>
-	<string id="ui_mcm_elseform_cmc_page_category_desc"><text>Выберите категорию CMC для этого мода. «Применить» сохраняет изменение; «Сбросить» или «Отменить» отменяет его.</text></string>
-	<string id="ui_mcm_elseform_cmc_clear_all"><text>Убрать все категории</text></string>
-	<string id="ui_mcm_elseform_cmc_clear_all_desc"><text>Подготовить перевод всех найденных модов в «Без категории». «Применить» сохраняет; «Сбросить» или «Отменить» отменяет изменения.</text></string>
+	<string id="ui_mcm_elseform_cmc_page_category_desc"><text>Выберите категорию для этого мода.</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all"><text>Снять категории со всех модов</text></string>
+	<string id="ui_mcm_elseform_cmc_delete_all_categories"><text>Удалить все категории</text></string>
+	<string id="ui_mcm_elseform_cmc_delete_all_categories_notice"><text>Изменения применяются сразу</text></string>
+	<string id="ui_mcm_elseform_cmc_restore_default_categories"><text>Восстановить категории по умолчанию</text></string>
+	<string id="ui_mcm_elseform_cmc_restore_default_categories_desc"><text>Очищает список категорий и восстанавливает встроенные категории CMC. Моды, назначенные в пользовательские категории, вернутся в «Не назначено».</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all_desc"><text>Подготовить перевод всех найденных модов в «Не назначено». «Применить» сохраняет; «Сбросить» или «Отменить» отменяет изменения.</text></string>
+	<string id="ui_mcm_elseform_cmc_clear_all_notice"><text>Изменения откладываются -- нажмите «Применить», чтобы сохранить</text></string>
 	<string id="ui_mcm_elseform_cmc_category_favorites"><text>Избранное</text></string>
 	<string id="ui_mcm_elseform_cmc_category_all"><text>Все моды</text></string>
 	<string id="ui_mcm_elseform_cmc_category_back"><text>&lt; Категории</text></string>
@@ -24,5 +29,16 @@
 	<string id="ui_mcm_elseform_cmc_category_ai"><text>ИИ и NPC</text></string>
 	<string id="ui_mcm_elseform_cmc_category_system"><text>Система и утилиты</text></string>
 	<string id="ui_mcm_elseform_cmc_category_other"><text>Другое</text></string>
-	<string id="ui_mcm_elseform_cmc_category_uncategorized"><text>Без категории</text></string>
+	<string id="ui_mcm_elseform_cmc_category_uncategorized"><text>Не назначено</text></string>
+
+	<!-- New Strings for CMC 1.1.0 -->
+	<string id="ui_mcm_menu_elseform_cmc_manage"><text>Управление категориями</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_title"><text>Управление категориями</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_desc"><text>Создавайте, переименовывайте, закрепляйте или удаляйте пользовательские категории. Закреплённая категория помещается сразу после «Избранное».</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_name"><text>Название</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_pinned"><text>Закрепить</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_deleted"><text>Удалить</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_new_name"><text>Название новой категории</text></string>
+	<string id="ui_mcm_elseform_cmc_manage_new_pinned"><text>Закрепить новую категорию</text></string>
+	<string id="ui_mcm_elseform_cmc_desc_dxml"><text>Принудительная английская локализация меню MCM для исправления алфавитной сортировки при смешанной локализации.</text></string>
 </string_table>

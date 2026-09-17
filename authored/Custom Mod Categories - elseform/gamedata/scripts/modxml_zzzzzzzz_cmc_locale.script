@@ -1,0 +1,67 @@
+local english_mcm_strings = {}
+local CONFIG_PATH = "plugins\\elseform_cmc.ltx"
+local SETTINGS_CONFIG_SECTION = "cmc_settings"
+local FORCE_ENGLISH_KEY = "force_english_mcm"
+
+local function get_force_english_mcm()
+	local config = ini_file_ex(CONFIG_PATH, true)
+	if not config then return false end
+	if not config:line_exist(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY) then
+		local force_english = false
+		local legacy = axr_main and axr_main.config
+		if legacy and legacy:section_exist("mcm")
+			and legacy:line_exist("mcm", "mcm/mcm_about/dxml") then
+			force_english = legacy:r_value("mcm", "mcm/mcm_about/dxml", 1, false)
+		end
+		config:w_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, force_english)
+		config:save()
+	end
+	return config:r_value(SETTINGS_CONFIG_SECTION, FORCE_ENGLISH_KEY, 1, false)
+end
+
+local function is_mcm_string(xml_file_name, string_id)
+	local file_name = string.lower(xml_file_name)
+	return string_id:sub(1, 7) == "ui_mcm_"
+		or string_id:sub(1, 4) == "mcm_"
+		or string.find(string_id, "_mcm_", 1, true)
+		or string_id:sub(-4) == "_mcm"
+		or (string.find(file_name, "mcm", 1, true)
+			and string.find(string_id, "_lst_", 1, true))
+end
+
+local function each_string(xml_obj, callback)
+	for _, text_node in ipairs(xml_obj:query("string > text")) do
+		local string_node = text_node.parent
+		local string_id = xml_obj:getElementAttr(string_node).id
+		local text = string_id and xml_obj:getText(text_node)
+		if text then
+			callback(string_id, text, text_node)
+		end
+	end
+end
+
+function on_xml_read()
+	local enabled = get_force_english_mcm()
+	if not enabled then
+		return
+	end
+
+	-- Register last so English includes other DXML edits and still wins over
+	-- equivalent edits to the active Russian table.
+	RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+		if xml_file_name:sub(1, 9) == [[text\eng\]] then
+			each_string(xml_obj, function(string_id, text)
+				if is_mcm_string(xml_file_name, string_id) then
+					english_mcm_strings[string_id] = text
+				end
+			end)
+		elseif xml_file_name:sub(1, 9) == [[text\rus\]] then
+			each_string(xml_obj, function(string_id, _, text_node)
+				local english_text = english_mcm_strings[string_id]
+				if english_text then
+					xml_obj:setText(text_node, english_text)
+				end
+			end)
+		end
+	end)
+end
