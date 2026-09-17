@@ -21,6 +21,4 @@ Silicon. Each entry is named for the source mods it was built against and states
 the exact source versions in its own README. Clear `appdata/shaders_cache/`
 after installing or updating any of them.
 
-### [D3DMetal - [SSS23] [3DSS4] - Optics](<d3dmetal/D3DMetal - [SSS23] [3DSS4] - Optics/README.md>)
-### [D3DMetal - [Glossy Puddles] - POM Loop Guards](<d3dmetal/D3DMetal - [Glossy Puddles] - POM Loop Guards/README.md>)
-### [D3DMetal - [SSS23] - POM Loop Guards](<d3dmetal/D3DMetal - [SSS23] - POM Loop Guards/README.md>)
+### Metal fixes were moved to https://github.com/elseform/gamma-metal-fixes
