@@ -14,11 +14,9 @@ Although asking permission or letting me know is not required - I would love to 
 
 This permission covers my original work only. Third-party code and assets keep their original authors' permissions and requirements.
 
-## D3DMetal compatibility
+## Metal compatibility fixes
 
-Shader overrides for running GAMMA through D3DMetal/DXMT on macOS / Apple
-Silicon. Each entry is named for the source mods it was built against and states
-the exact source versions in its own README. Clear `appdata/shaders_cache/`
-after installing or updating any of them.
-
-### Metal fixes were moved to https://github.com/elseform/gamma-metal-fixes
+Shader fixes for DXMT and D3DMetal are maintained in
+[gamma-metal-fixes](https://github.com/elseform/gamma-metal-fixes).
+See that repository for current downloads, compatibility notes, and installation
+instructions.
