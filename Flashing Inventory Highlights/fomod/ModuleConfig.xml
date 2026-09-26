@@ -12,7 +12,7 @@
         <group name="Package" type="SelectExactlyOne">
           <plugins order="Explicit">
             <plugin name="Flashing Inventory Highlights">
-              <description>Installs the complete FIH package with pulse, linger, timing, brightness, and color controls.</description>
+              <description>Makes compatible attachments and upgrade tools easier to spot with a configurable pulse on related-item highlights in the inventory and trading grids.</description>
               <image path="fomod\FIH11.png" />
               <files>
                 <folder source="gamedata" destination="gamedata" />

@@ -11,7 +11,7 @@
         <group name="Package" type="SelectExactlyOne">
           <plugins order="Explicit">
             <plugin name="Inspect Weapon Hotkey">
-              <description>Installs a configurable hotkey that plays the active weapon's existing inspection animation while the weapon is idle.</description>
+              <description>Plays the active weapon's existing inspection animation on a configurable hotkey while the weapon is idle.</description>
               <files>
                 <folder source="gamedata" destination="gamedata" />
               </files>
