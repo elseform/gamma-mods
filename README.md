@@ -1,6 +1,9 @@
-# GAMMA Mods & Fixes
+# GAMMA Mods
 
-Small standalone mods and targeted fixes for STALKER Anomaly/GAMMA.
+Standalone mods I made for STALKER Anomaly/GAMMA.
+Check individual README's to know more.
+
+I'm (sometimes) available @ GAMMA's discord server so if you have issues with the mod or have a suggestion - ping me there.
 
 ## Installation
 
