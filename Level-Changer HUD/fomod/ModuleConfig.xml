@@ -20,7 +20,7 @@
         <group name="Package" type="SelectExactlyOne">
           <plugins order="Explicit">
             <plugin name="Level-Changer HUD">
-              <description>Installs the destination level-name HUD label with configurable task and stash counters.</description>
+              <description>Shows the destination name when you look at a level transition, with counts of tasks, stashes and RF packages waiting there.</description>
               <image path="fomod\lchud-mcm.png" />
               <typeDescriptor>
                 <type name="Recommended" />
