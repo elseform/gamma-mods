@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+  <Name>Level-Changer HUD - elseform</Name>
+  <Author>elseform</Author>
+  <Version>1.0.0</Version>
+  <Website>https://github.com/elseform/gamma-mods/releases/latest</Website>
+  <Description>Shows the destination name when you look at a level transition, with counts of tasks, stashes and RF packages waiting there. Icon atlas and texture definitions by Catsy (Catspaw), from Interaction Dot Marks 1.7.5.</Description>
+  <Groups>
+    <element>Utilities</element>
+  </Groups>
+</fomod>

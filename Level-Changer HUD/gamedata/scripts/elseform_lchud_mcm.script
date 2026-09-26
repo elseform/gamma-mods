@@ -1,0 +1,327 @@
+--[[
+    Level-Changer HUD (L-CHUD) - MCM Configuration
+    Author: elseform
+--]]
+
+local DEFAULT_ENABLED       = true
+local DEFAULT_DETECTION_METHOD = "auto"
+local DEFAULT_LOS_GRACE_MS  = 200
+local DEFAULT_LOS_WIDEN_RADIUS_CM = 75
+local DEFAULT_DETECT_RADIUS = 50
+local DEFAULT_OFFSET_X      = 0
+local DEFAULT_OFFSET_Y      = 0
+local DEFAULT_SHOW_READY_TASKS = true
+local DEFAULT_SHOW_ACTIVE_TASKS = true
+local DEFAULT_SHOW_REGULAR_STASHES = true
+local DEFAULT_SHOW_SPECIAL_STASHES = true
+local DEFAULT_SHOW_PLAYER_STASHES = true
+local DEFAULT_SHOW_RF_PACKAGE = true
+local DEFAULT_RF_PACKAGE_PULSATE = true
+local DEFAULT_SHOW_ZERO_COUNTS = false
+local DEFAULT_TITLE_FONT    = "graffiti22"
+local DEFAULT_TASKS_FONT    = "graffiti19"
+local DEFAULT_ANIMATION_VIEW_ANGLE = 50
+local DEFAULT_DRIFT_PRESET = "gentle"
+local DEFAULT_TASK_GLYPH = "target"
+local DEFAULT_STASH_GLYPH = "stash"
+local DEFAULT_RF_PACKAGE_GLYPH = "active_dot"
+
+local MCM_ROOT = "elseform_lchud"
+
+local path_cache = {}
+
+local function mcm_path(id)
+    local path = path_cache[id]
+    if not path then
+        path = MCM_ROOT .. "/" .. id
+        path_cache[id] = path
+    end
+    return path
+end
+
+local FONT_CONTENT = {
+    { "letterica16", "ui_mcm_elseform_lchud_font_letterica16" },
+    { "letterica18", "ui_mcm_elseform_lchud_font_letterica18" },
+    { "letterica25", "ui_mcm_elseform_lchud_font_letterica25" },
+    { "graffiti19",  "ui_mcm_elseform_lchud_font_graffiti19" },
+    { "graffiti22",  "ui_mcm_elseform_lchud_font_graffiti22" },
+    { "graffiti32",  "ui_mcm_elseform_lchud_font_graffiti32" },
+}
+
+local DETECTION_METHOD_CONTENT = {
+    { "auto",   "ui_mcm_elseform_lchud_detection_method_auto" },
+    { "simple", "ui_mcm_elseform_lchud_detection_method_simple" },
+    { "los",    "ui_mcm_elseform_lchud_detection_method_los" },
+}
+
+-- Animation timing presets. Fades in milliseconds,
+-- distance in HUD layout units (1024x768 space), travel in milliseconds.
+-- Travel stays shorter than both fades so the label lands before it is
+-- fully solid and has settled before it is gone.
+local DRIFT_PRESETS = {
+    instant  = { fade_in_ms = 100, fade_out_ms = 75,  distance = 2, travel_ms = 75 },
+    fast     = { fade_in_ms = 150, fade_out_ms = 100, distance = 4, travel_ms = 75 },
+    balanced = { fade_in_ms = 200, fade_out_ms = 150, distance = 5, travel_ms = 125 },
+    gentle   = { fade_in_ms = 225, fade_out_ms = 175, distance = 5, travel_ms = 175 },
+    fade     = { fade_in_ms = 175, fade_out_ms = 150, distance = 0, travel_ms = 125 },
+}
+
+local DRIFT_PRESET_CONTENT = {
+    { "instant",  "ui_mcm_elseform_lchud_drift_preset_instant" },
+    { "fast",     "ui_mcm_elseform_lchud_drift_preset_fast" },
+    { "balanced", "ui_mcm_elseform_lchud_drift_preset_balanced" },
+    { "gentle",   "ui_mcm_elseform_lchud_drift_preset_gentle" },
+    { "fade",     "ui_mcm_elseform_lchud_drift_preset_fade" },
+}
+
+local GLYPH_CONTENT = {
+    { "target",      "ui_mcm_elseform_lchud_glyph_target" },
+    { "stash",       "ui_mcm_elseform_lchud_glyph_stash" },
+    { "active_dot",  "ui_mcm_elseform_lchud_glyph_active_dot" },
+    { "ring",        "ui_mcm_elseform_lchud_glyph_ring" },
+    { "weight",      "ui_mcm_elseform_lchud_glyph_weight" },
+    { "ruble",       "ui_mcm_elseform_lchud_glyph_ruble" },
+    { "recycle",     "ui_mcm_elseform_lchud_glyph_recycle" },
+    { "explosive",   "ui_mcm_elseform_lchud_glyph_explosive" },
+}
+
+local cache = {}
+
+local function get_config(path, default)
+    local value = cache[path]
+    if value ~= nil then
+        return value
+    end
+
+    value = default
+    if ui_mcm then
+        local stored = ui_mcm.get(path)
+        if stored ~= nil then
+            value = stored
+        end
+    end
+
+    cache[path] = value
+    return value
+end
+
+local function flush_cache()
+    empty_table(cache)
+end
+
+local function get_clamped_number(path, default, minimum, maximum)
+    local value = tonumber(get_config(path, default)) or default
+    return clamp(value, minimum, maximum)
+end
+
+local function get_glyph(path, default)
+    local value = get_config(path, default)
+    for i = 1, #GLYPH_CONTENT do
+        if GLYPH_CONTENT[i][1] == value then return value end
+    end
+    return default
+end
+
+function is_enabled()
+    return get_config(mcm_path("enabled"), DEFAULT_ENABLED)
+end
+
+function get_detection_method()
+    local value = get_config(mcm_path("detection_method"), DEFAULT_DETECTION_METHOD)
+    if value == "auto" or value == "simple" or value == "los" then return value end
+    return DEFAULT_DETECTION_METHOD
+end
+
+function get_los_grace_ms()
+    return get_clamped_number(mcm_path("los_grace_ms"), DEFAULT_LOS_GRACE_MS, 0, 1000)
+end
+
+function get_los_widen_radius_cm()
+    return get_clamped_number(mcm_path("los_widen_radius_cm"), DEFAULT_LOS_WIDEN_RADIUS_CM, 0, 200)
+end
+
+function get_detect_radius()
+    return get_clamped_number(mcm_path("detect_radius"), DEFAULT_DETECT_RADIUS, 5, 100)
+end
+
+function get_offset_x()
+    return get_config(mcm_path("offset_x"), DEFAULT_OFFSET_X)
+end
+
+function get_offset_y()
+    return get_config(mcm_path("offset_y"), DEFAULT_OFFSET_Y)
+end
+
+function get_show_ready_tasks()
+    return get_config(mcm_path("show_ready_tasks"), DEFAULT_SHOW_READY_TASKS)
+end
+
+function get_show_active_tasks()
+    return get_config(mcm_path("show_active_tasks"), DEFAULT_SHOW_ACTIVE_TASKS)
+end
+
+function get_show_regular_stashes()
+    return get_config(mcm_path("show_regular_stashes"), DEFAULT_SHOW_REGULAR_STASHES)
+end
+
+function get_show_special_stashes()
+    return get_config(mcm_path("show_special_stashes"), DEFAULT_SHOW_SPECIAL_STASHES)
+end
+
+function get_show_player_stashes()
+    return get_config(mcm_path("show_player_stashes"), DEFAULT_SHOW_PLAYER_STASHES)
+end
+
+function get_show_rf_package()
+    return get_config(mcm_path("show_rf_package"), DEFAULT_SHOW_RF_PACKAGE)
+end
+
+function get_rf_package_pulsate()
+    return get_config(mcm_path("rf_package_pulsate"), DEFAULT_RF_PACKAGE_PULSATE)
+end
+
+function get_show_zero_counts()
+    return get_config(mcm_path("show_zero_counts"), DEFAULT_SHOW_ZERO_COUNTS)
+end
+
+function get_title_font()
+    return get_config(mcm_path("title_font"), DEFAULT_TITLE_FONT)
+end
+
+function get_tasks_font()
+    return get_config(mcm_path("tasks_font"), DEFAULT_TASKS_FONT)
+end
+
+function get_animation_view_angle()
+    return get_clamped_number(mcm_path("animation_view_angle"), DEFAULT_ANIMATION_VIEW_ANGLE, 20, 90)
+end
+
+function get_drift_timing()
+    local id = get_config(mcm_path("drift_preset"), DEFAULT_DRIFT_PRESET)
+    return DRIFT_PRESETS[id] or DRIFT_PRESETS[DEFAULT_DRIFT_PRESET]
+end
+
+function get_ready_glyph()
+    return get_glyph(mcm_path("task_glyph"), DEFAULT_TASK_GLYPH)
+end
+
+function get_active_glyph()
+    return get_glyph(mcm_path("task_glyph"), DEFAULT_TASK_GLYPH)
+end
+
+function get_regular_stash_glyph()
+    return get_glyph(mcm_path("stash_glyph"), DEFAULT_STASH_GLYPH)
+end
+
+function get_special_stash_glyph()
+    return get_glyph(mcm_path("stash_glyph"), DEFAULT_STASH_GLYPH)
+end
+
+function get_player_stash_glyph()
+    return get_glyph(mcm_path("stash_glyph"), DEFAULT_STASH_GLYPH)
+end
+
+function get_rf_package_glyph()
+    return get_glyph(mcm_path("rf_package_glyph"), DEFAULT_RF_PACKAGE_GLYPH)
+end
+
+local glyph_menu_generation = 0
+
+local function begin_glyph_menu()
+    glyph_menu_generation = glyph_menu_generation + 1
+    return true
+end
+
+local function init_glyph_selector(anchor, handlers, attrs, flags)
+    local ctrl = handlers and handlers.ctrl
+    if not (ctrl and elseform_lchud and elseform_lchud.get_glyph_texture) then return end
+
+    local textures = {}
+    local selected = 1
+    local current_text = ctrl:GetText()
+    for i, item in ipairs(attrs.content) do
+        textures[i] = elseform_lchud.get_glyph_texture(item[1])
+        if not textures[i] then return end
+        if current_text == game.translate_string(item[2]) then selected = i end
+    end
+
+    local dev = device()
+    local width_scale = (1024 / 768) * dev.height / dev.width
+    local function set_icon(icon, texture, height, x)
+        local size = math.min(18, height - 2)
+        icon:InitTexture(texture)
+        icon:SetStretchTexture(true)
+        icon:SetWndSize(vector2():set(size * width_scale, size))
+        icon:SetWndPos(vector2():set(x, (height - size) / 2))
+        icon:Enable(false)
+    end
+
+    local xml = CScriptXmlInit()
+    xml:ParseFile("ui_mcm.xml")
+    local preview = xml:InitStatic("elements:image", ctrl)
+    local preview_height = ctrl:GetHeight()
+    set_icon(preview, textures[selected], preview_height, 5)
+
+    ctrl:ClearList()
+    for i, texture in ipairs(textures) do
+        local row = ctrl:AddItem("", i)
+        local icon = row:AddIconField(18 * width_scale)
+        set_icon(icon, texture, row:GetHeight(), 0)
+    end
+    ctrl:SetCurrentIdx(selected - 1)
+    ctrl:SetText("")
+
+    local generation = glyph_menu_generation
+    attrs.on_selection_functor = { function(path, opt, value)
+        if generation ~= glyph_menu_generation then return end
+        local texture = elseform_lchud.get_glyph_texture(value)
+        if texture then set_icon(preview, texture, preview_height, 5) end
+    end }
+end
+
+function on_mcm_load()
+    return {
+        id = MCM_ROOT,
+        precondition = { begin_glyph_menu },
+        sh = true,
+        text = "ui_mcm_menu_elseform_lchud",
+        clr = {255, 255, 255, 255},
+        gr = {
+            { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_elseform_lchud_slide", size = { 512, 50 }, spacing = 20 },
+            { id = "text_2", type = "desc", text = "ui_mcm_elseform_lchud_text_2" },
+            { id = "enabled", type = "check", val = 1, def = DEFAULT_ENABLED },
+            { id = "detect_radius", type = "track", val = 2, def = DEFAULT_DETECT_RADIUS, min = 5, max = 100, step = 1 },
+            { id = "group_fonts", type = "desc", text = "ui_mcm_elseform_lchud_group_fonts", clr = {255, 255, 255, 255} },
+            { id = "title_font", type = "list", val = 0, def = DEFAULT_TITLE_FONT, no_str = true, content = FONT_CONTENT },
+            { id = "tasks_font", type = "list", val = 0, def = DEFAULT_TASKS_FONT, no_str = true, content = FONT_CONTENT },
+            { id = "drift_preset", type = "list", val = 0, def = DEFAULT_DRIFT_PRESET, no_str = true, content = DRIFT_PRESET_CONTENT },
+            { id = "group_counters", type = "desc", text = "ui_mcm_elseform_lchud_group_counters", clr = {255, 255, 255, 255} },
+            { id = "show_ready_tasks", type = "check", val = 1, def = DEFAULT_SHOW_READY_TASKS },
+            { id = "show_active_tasks", type = "check", val = 1, def = DEFAULT_SHOW_ACTIVE_TASKS },
+            { id = "show_regular_stashes", type = "check", val = 1, def = DEFAULT_SHOW_REGULAR_STASHES },
+            { id = "show_special_stashes", type = "check", val = 1, def = DEFAULT_SHOW_SPECIAL_STASHES },
+            { id = "show_player_stashes", type = "check", val = 1, def = DEFAULT_SHOW_PLAYER_STASHES },
+            { id = "show_rf_package", type = "check", val = 1, def = DEFAULT_SHOW_RF_PACKAGE },
+            { id = "rf_package_pulsate", type = "check", val = 1, def = DEFAULT_RF_PACKAGE_PULSATE },
+            { id = "show_zero_counts", type = "check", val = 1, def = DEFAULT_SHOW_ZERO_COUNTS },
+            { id = "div_animation", type = "line" },
+            { id = "text_3", type = "desc", text = "ui_mcm_elseform_lchud_text_3" },
+            { id = "offset_y", type = "track", val = 2, def = DEFAULT_OFFSET_Y, min = -300, max = 440, step = 5 },
+            { id = "offset_x", type = "track", val = 2, def = DEFAULT_OFFSET_X, min = -500, max = 500, step = 5 },
+            { id = "detection_method", type = "list", val = 0, def = DEFAULT_DETECTION_METHOD, no_str = true, content = DETECTION_METHOD_CONTENT },
+            { id = "animation_view_angle", type = "track", val = 2, def = DEFAULT_ANIMATION_VIEW_ANGLE, min = 20, max = 90, step = 1 },
+            { id = "los_grace_ms", type = "track", val = 2, def = DEFAULT_LOS_GRACE_MS, min = 0, max = 1000, step = 25 },
+            { id = "los_widen_radius_cm", type = "track", val = 2, def = DEFAULT_LOS_WIDEN_RADIUS_CM, min = 0, max = 200, step = 25 },
+            { id = "group_icons", type = "desc", text = "ui_mcm_elseform_lchud_group_icons", clr = {255, 255, 255, 255} },
+            { id = "task_glyph", type = "list", val = 0, def = DEFAULT_TASK_GLYPH, no_str = true, content = GLYPH_CONTENT, ui_hook_functor = { init_glyph_selector } },
+            { id = "stash_glyph", type = "list", val = 0, def = DEFAULT_STASH_GLYPH, no_str = true, content = GLYPH_CONTENT, ui_hook_functor = { init_glyph_selector } },
+            { id = "rf_package_glyph", type = "list", val = 0, def = DEFAULT_RF_PACKAGE_GLYPH, no_str = true, content = GLYPH_CONTENT, ui_hook_functor = { init_glyph_selector } },
+        }
+    }
+end
+
+function on_game_start()
+    flush_cache()
+    RegisterScriptCallback("on_option_change", flush_cache)
+    RegisterScriptCallback("mcm_option_change", flush_cache)
+end

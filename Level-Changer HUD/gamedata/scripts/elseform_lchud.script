@@ -1,0 +1,1286 @@
+--[[
+    Level-Changer HUD
+    Author: elseform
+
+    Shows the destination level name on the HUD when the player is near a
+    level transition and looking toward it, with counters for tasks, known
+    stashes, and an RF Receiver package waiting at the destination.
+
+    Transitions are discovered once per level on first update: every
+    "level_changer" server entity on the current level, plus Extra Level
+    Transitions entries when that mod is installed. The list refreshes each
+    time the player enters a new level (actor_on_first_update fires again).
+
+    All settings, defaults, and clamps live in elseform_lchud_mcm.script.
+--]]
+
+-- ============================================================================
+-- Configuration
+-- ============================================================================
+
+local RELEASE_MARGIN_DEGREES = 5   -- extra angle before a shown label lets go
+local COUNTER_UPDATE_MS     = 100
+local SWAP_ALPHA_EPSILON    = 1 / 255
+
+local RF_PULSE_PERIOD_MS    = 1200   -- ms per full breath, matches a "calm" cadence
+local RF_PULSE_MIN_FACTOR   = 0.35
+local RF_PULSE_MAX_FACTOR   = 1.0
+local RF_PULSE_OMEGA        = (2 * math.pi) / RF_PULSE_PERIOD_MS
+
+local math_cos = math.cos
+local math_rad = math.rad
+
+local BASE_POS_X            = 212
+local BASE_POS_Y            = 305    -- folds in the old default offset_y (45 + 260)
+local LABEL_WIDTH            = 600    -- matches lchud_label width in elseform_lchud.xml
+local LABEL_HEIGHT           = 30     -- matches lchud_label height in elseform_lchud.xml
+local TASKROW_ITEM_GAP       = 4
+local TASKROW_CELL_GAP       = 12
+local TASKROW_OFFSET_Y       = LABEL_HEIGHT + 6   -- below the label, not overlapping it
+
+local CLR_R                 = 220
+local CLR_G                 = 215
+local CLR_B                 = 200
+
+local GLYPH_TEXTURES = {
+    target      = "ui_catsy_marker_task_sec",
+    stash       = "ui_catsy_marker_stash",
+    active_dot  = "ui_catsy_marker_dotactive",
+    ring        = "ui_catsy_marker_ringblank",
+    weight      = "ui_catsy_marker_weight",
+    ruble       = "ui_catsy_marker_ruble",
+    recycle     = "ui_catsy_marker_recycle_bin",
+    explosive   = "ui_catsy_marker_explosive",
+}
+
+-- Shared with MCM so previews use the same validated textures as the HUD.
+function get_glyph_texture(glyph)
+    return GLYPH_TEXTURES[glyph]
+end
+
+local FONT_PRESETS = {
+    letterica16 = GetFontLetterica16Russian,
+    letterica18 = GetFontLetterica18Russian,
+    letterica25 = GetFontLetterica25,
+    graffiti19  = GetFontGraffiti19Russian,
+    graffiti22  = GetFontGraffiti22Russian,
+    graffiti32  = GetFontGraffiti32Russian,
+}
+
+local function get_font(font_id, fallback_id)
+    local getter = FONT_PRESETS[font_id] or FONT_PRESETS[fallback_id]
+    return getter()
+end
+
+-- ============================================================================
+-- State
+-- ============================================================================
+
+local HUD               = nil     -- UILevelChangerLabel instance
+local lc_cache          = {}      -- { { id, extra, pos, name, dest_level, auto_los }, ... }
+local next_counter_update = 0
+local current_alpha     = 0       -- 0..1 shown
+local target_alpha      = 0       -- 0..1 target
+local current_drift_y   = 0
+local display_label     = ""
+local display_dest_level = nil
+local pending_label     = nil
+local pending_dest_level = nil
+local pending_alpha     = 0
+local current_todo_count  = 0     -- task tally, refreshed on the throttled update tick
+local current_ready_count = 0
+local current_regular_stash_count = 0
+local current_special_stash_count = 0
+local current_player_stash_count = 0
+local current_rf_package_present = 0
+local los_hold_lc_id    = nil   -- id of the level changer we last had a clear ray to
+local los_lost_since    = 0     -- time_global() when that ray first went blocked
+local drift_lc_id       = nil
+local drift_armed       = true
+local drift_reveal_elapsed_ms = 0
+local drift_disappear_elapsed_ms = 0
+local drift_disappear_start_alpha = 0
+local drift_disappear_start_y = 0
+local drift_phase       = "hidden"
+local v_dir             = vector()
+local v_ray_origin      = vector()
+local v_ray_dir         = vector()
+local v_widen_target    = vector()
+local lc_ray_pick       = nil
+
+local LOS_TARGET_EPSILON        = 0.5   -- meters; tolerates the level-changer's own local geometry
+local LOS_MAX_BOUNCES           = 4     -- max transparent hits (foliage) walked through per check
+local LOS_TRANSPARENT_THRESHOLD = 0.5   -- material_vis_transparency_factor at/above this doesn't block
+local RQT_STATIC                = 2     -- rq_target.targets.rqtStatic; global enum table isn't populated
+                                         -- at runtime, so use the raw flag value (established pattern,
+                                         -- see de_misc_encounter.script:ray_cast_to_actor_le)
+
+-- ============================================================================
+-- Settings snapshot
+-- ============================================================================
+
+-- Every MCM value the HUD reads, copied once per option change instead of
+-- fetched through elseform_lchud_mcm getters on every frame.
+local settings = {}
+local settings_dirty = true
+local settings_version = 0   -- bumped on each refresh; lets the HUD re-apply fonts/glyphs once
+
+local function mark_settings_dirty()
+    settings_dirty = true
+end
+
+local function ensure_settings()
+    if not settings_dirty then return end
+    local m = elseform_lchud_mcm
+    settings.enabled              = m.is_enabled()
+    settings.detect_radius        = m.get_detect_radius()
+    settings.detection_method     = m.get_detection_method()
+    settings.view_angle           = m.get_animation_view_angle()
+    settings.los_grace_ms         = m.get_los_grace_ms()
+    settings.los_widen_radius_cm  = m.get_los_widen_radius_cm()
+    settings.offset_x             = m.get_offset_x()
+    settings.offset_y             = m.get_offset_y()
+    settings.show_ready_tasks     = m.get_show_ready_tasks()
+    settings.show_active_tasks    = m.get_show_active_tasks()
+    settings.show_regular_stashes = m.get_show_regular_stashes()
+    settings.show_special_stashes = m.get_show_special_stashes()
+    settings.show_player_stashes  = m.get_show_player_stashes()
+    settings.show_rf_package      = m.get_show_rf_package()
+    settings.rf_package_pulsate   = m.get_rf_package_pulsate()
+    settings.show_zero_counts     = m.get_show_zero_counts()
+    settings.ready_glyph          = m.get_ready_glyph()
+    settings.active_glyph         = m.get_active_glyph()
+    settings.regular_stash_glyph  = m.get_regular_stash_glyph()
+    settings.special_stash_glyph  = m.get_special_stash_glyph()
+    settings.player_stash_glyph   = m.get_player_stash_glyph()
+    settings.rf_package_glyph     = m.get_rf_package_glyph()
+    settings.title_font           = m.get_title_font()
+    settings.tasks_font           = m.get_tasks_font()
+    settings.drift_timing         = m.get_drift_timing()
+    settings_dirty = false
+    settings_version = settings_version + 1
+end
+
+-- Settings keys per counter cell, in counter_cells order.
+local CELL_GLYPH_KEYS = {
+    "ready_glyph", "active_glyph", "regular_stash_glyph",
+    "special_stash_glyph", "player_stash_glyph", "rf_package_glyph",
+}
+local CELL_TOGGLE_KEYS = {
+    "show_ready_tasks", "show_active_tasks", "show_regular_stashes",
+    "show_special_stashes", "show_player_stashes", "show_rf_package",
+}
+
+-- ============================================================================
+-- Level changer discovery
+-- ============================================================================
+
+-- Per-level-changer detection overrides used by the "Auto" detection method.
+-- Simple detection (range and gaze only) suits most cases.
+-- Line-of-sight detection suits a transition that would otherwise
+-- show through solid geometry, such as a level area directly above or below
+-- another one. Unlisted level changers use Simple detection in Auto mode.
+--
+-- Each entry matches by the current level and, optionally, the destination
+-- level and the level changer's spawn name (the section name for an Extra
+-- Level Transitions entry). Omit `dest` to cover every level changer on that
+-- level; add `name` only when one level has two changers to the same
+-- destination. When entries in both lists match, the more specific one wins
+-- (`name` over `dest` over level-only), so a FORCE_SIMPLE entry for one
+-- transition can carve an exception out of a level-wide FORCE_RAY entry.
+-- Equally specific matches resolve to line of sight.
+local FORCE_SIMPLE = {
+    -- { level = "<current level>", dest = "<destination level>", note = "tunnel exit" },
+}
+local FORCE_RAY = {
+    { level = "l03_agroprom" },
+    { level = "l04_darkvalley" },
+    { level = "l08_yantar" },
+    { level = "l10_radar" },
+    { level = "l12_stancia" },
+    { level = "l12_stancia_2" },
+    { level = "l13_generators" },
+    { level = "jupiter" },
+    { level = "zaton" },
+}
+
+-- Specificity of the best entry in `list` matching this level changer, or
+-- 0 when none matches.
+local function best_detection_match(list, level_name, dest_level, se_name)
+    local best = 0
+    for i = 1, #list do
+        local e = list[i]
+        if e.level == level_name
+            and (e.dest == nil or e.dest == dest_level)
+            and (e.name == nil or e.name == se_name) then
+            local score = 1
+            if e.dest ~= nil then score = score + 1 end
+            if e.name ~= nil then score = score + 2 end
+            if score > best then best = score end
+        end
+    end
+    return best
+end
+
+local function resolve_auto_use_los(level_name, dest_level, se_name)
+    local ray = best_detection_match(FORCE_RAY, level_name, dest_level, se_name)
+    local simple = best_detection_match(FORCE_SIMPLE, level_name, dest_level, se_name)
+    return ray > 0 and ray >= simple
+end
+
+local function parse_ltx_vector(str)
+    if type(str) ~= "string" then return nil end
+    local x, y, z = str:match("^%s*([^,]+),([^,]+),([^,]+)%s*$")
+    x, y, z = tonumber(x), tonumber(y), tonumber(z)
+    if not (x and y and z) then return nil end
+    return vector():set(x, y, z)
+end
+
+-- Adds Demonized's Extra Level Transitions to
+-- the cache. Those transitions are physics objects, not level_changer
+-- entities, so the level_changer scan never sees them. Reads the mod's own
+-- config pool (lc_extra_transitions.lc_pool: section -> ltx fields) rather
+-- than its spawned objects, because that mod creates them in its own
+-- actor_on_first_update, which may run after ours on a fresh game. Entries
+-- use a string id so they never collide with a server-entity id and are
+-- never passed to level.object_by_id; the teleport trigger itself stays
+-- entirely in that mod.
+local function add_extra_transitions(sim, gg, current_level)
+    if not lc_extra_transitions then return end
+    local pool = lc_extra_transitions.lc_pool
+    if type(pool) ~= "table" then return end
+
+    for section, v in pairs(pool) do
+        local gvid = tonumber(v.gvid)
+        local dest_gvid = tonumber(v.to_gvid)
+        local pos = parse_ltx_vector(v.pos)
+        if pos and gvid and dest_gvid and gg:valid_vertex_id(gvid) and gg:valid_vertex_id(dest_gvid) then
+            local vert = gg:vertex(gvid)
+            local level_id = vert and vert:level_id()
+            if level_id and sim:level_name(level_id) == current_level then
+                local dest_vert = gg:vertex(dest_gvid)
+                local dest_level_id = dest_vert and dest_vert:level_id()
+                local dest_level_name = dest_level_id and sim:level_name(dest_level_id)
+                if dest_level_name then
+                    lc_cache[#lc_cache + 1] = {
+                        id         = "extra:" .. section,
+                        extra      = true,
+                        pos        = pos,
+                        name       = game.translate_string(dest_level_name),
+                        dest_level = dest_level_name,
+                        auto_los   = resolve_auto_use_los(current_level, dest_level_name, section),
+                    }
+                end
+            end
+        end
+    end
+end
+
+-- Build a cache of all level changers located on the current map.
+-- Each entry stores: server-entity id (a string key for Extra Level
+-- Transitions entries), world position, pre-resolved translated destination
+-- level name, and whether Auto detection uses line of sight for it.
+local function build_lc_cache()
+    lc_cache = {}
+
+    local sim = alife()
+    if not sim then return end
+
+    local gg = game_graph()
+    local current_level = level.name()
+
+    for i = 1, 65534 do
+        local se = sim:object(i)
+        if se then
+            if se:section_name() == "level_changer" then
+                local gvid = se.m_game_vertex_id
+                if gvid and gg:valid_vertex_id(gvid) then
+                    local vert = gg:vertex(gvid)
+                    local obj_level_id = vert and vert:level_id()
+                    local obj_level_name = obj_level_id and sim:level_name(obj_level_id)
+                    if obj_level_name == current_level then
+                        local dest_gvid = se.dest_game_vertex_id
+                        if dest_gvid and gg:valid_vertex_id(dest_gvid) then
+                            local dest_vert = gg:vertex(dest_gvid)
+                            local dest_level_id = dest_vert and dest_vert:level_id()
+                            local dest_level_name = dest_level_id and sim:level_name(dest_level_id)
+                            if dest_level_name then
+                                local translated = game.translate_string(dest_level_name)
+                                lc_cache[#lc_cache + 1] = {
+                                    id         = se.id,
+                                    pos        = se.position,
+                                    name       = translated,
+                                    dest_level = dest_level_name,
+                                    auto_los   = resolve_auto_use_los(current_level, dest_level_name, se:name()),
+                                }
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    add_extra_transitions(sim, gg, current_level)
+end
+
+-- Counts known, uncollected destination stashes. The cache value must be
+-- truthy and the PDA marker must still exist. Player-created (blue)
+-- stashes live in different id space (backpacks dropped via
+-- item_backpack.script, tracked in
+-- alife_storage_manager.get_state().player_created_stashes with a
+-- "treasure_player" spot) -- they never appear in treasure_manager.caches,
+-- so they need their own pass.
+local function get_stash_tally(dest_level)
+    local regular_count = 0
+    local special_count = 0
+    local player_count = 0
+
+    if not dest_level then return regular_count, special_count, player_count end
+
+    local sim = alife()
+    if not sim then return regular_count, special_count, player_count end
+    local gg = game_graph()
+    if not (gg and level) then return regular_count, special_count, player_count end
+
+    if treasure_manager and type(treasure_manager.caches) == "table" then
+        for id, cache_state in pairs(treasure_manager.caches) do
+            if cache_state then
+                local se_stash = sim:object(id)
+                local gvid = se_stash and se_stash.m_game_vertex_id
+                if gvid and gg:valid_vertex_id(gvid) then
+                    local vert = gg:vertex(gvid)
+                    local level_id = vert and vert:level_id()
+                    local stash_level = level_id and sim:level_name(level_id)
+                    if stash_level == dest_level then
+                        local is_unique = level.map_has_object_spot(id, "treasure_unique") ~= 0
+                        if not is_unique then
+                            local is_special = level.map_has_object_spot(id, "treasure_searched") ~= 0
+                            local is_regular = level.map_has_object_spot(id, "treasure") ~= 0
+                            if is_special then
+                                special_count = special_count + 1
+                            elseif is_regular then
+                                regular_count = regular_count + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if alife_storage_manager and alife_storage_manager.get_state then
+        local m_data = alife_storage_manager.get_state()
+        local player_stashes = m_data and m_data.player_created_stashes
+        if player_stashes then
+            for id, _ in pairs(player_stashes) do
+                local se_stash = sim:object(id)
+                local gvid = se_stash and se_stash.m_game_vertex_id
+                if gvid and gg:valid_vertex_id(gvid) then
+                    local vert = gg:vertex(gvid)
+                    local level_id = vert and vert:level_id()
+                    local stash_level = level_id and sim:level_name(level_id)
+                    if stash_level == dest_level and level.map_has_object_spot(id, "treasure_player") ~= 0 then
+                        player_count = player_count + 1
+                    end
+                end
+            end
+        end
+    end
+
+    return regular_count, special_count, player_count
+end
+
+-- Whether Tweak_Breeki's RF Receiver has an uncollected hidden package
+-- waiting on dest_level. RF Receiver is an optional third-party mod. Its
+-- tb_package_active/tb_package_in_level globals are bare top-level
+-- assignments inside TB_RF_Receiver_Packages.script. X-Ray lowercases names
+-- in its filesystem index, so the live per-file table is registered as
+-- tb_rf_receiver_packages. Same soft-dependency pattern as
+-- treasure_manager/task_manager above: the table itself is nil (not an
+-- error) when that mod isn't loaded.
+local function get_rf_package_tally(dest_level)
+    if not dest_level then return 0 end
+    if not tb_rf_receiver_packages then return 0 end
+    if tb_rf_receiver_packages.tb_package_active ~= true then return 0 end
+    if tb_rf_receiver_packages.tb_package_in_level ~= dest_level then return 0 end
+    return 1
+end
+
+-- ============================================================================
+-- Core logic
+-- ============================================================================
+
+local function smoothstep(value)
+    local t = clamp(value, 0, 1)
+    return t * t * (3 - 2 * t)
+end
+
+local function reset_los_hold()
+    los_hold_lc_id = nil
+    los_lost_since = 0
+end
+
+local function reset_drift_tracking(armed)
+    drift_lc_id = nil
+    drift_armed = armed
+    drift_reveal_elapsed_ms = 0
+    drift_disappear_elapsed_ms = 0
+    drift_disappear_start_alpha = 0
+    drift_disappear_start_y = 0
+    drift_phase = "hidden"
+end
+
+local function begin_drift_reveal(lc)
+    drift_lc_id = lc.id
+    drift_armed = false
+    drift_reveal_elapsed_ms = 0
+    drift_disappear_elapsed_ms = 0
+    drift_phase = "revealing"
+end
+
+local function begin_drift_disappearance()
+    if drift_phase == "disappearing" then return end
+    drift_lc_id = nil
+    drift_armed = false
+    drift_disappear_elapsed_ms = 0
+    drift_disappear_start_alpha = current_alpha
+    drift_disappear_start_y = current_drift_y
+    drift_phase = "disappearing"
+end
+
+-- Continuous breathing factor for the RF package icon; single indicator, so
+-- a plain time_global()-phased sine (no per-instance epoch) is enough.
+local function get_rf_pulse_factor(now)
+    local phase = 0.5 + 0.5 * math.sin(now * RF_PULSE_OMEGA)
+    return RF_PULSE_MIN_FACTOR + (RF_PULSE_MAX_FACTOR - RF_PULSE_MIN_FACTOR) * phase
+end
+
+local function find_cached_lc(id)
+    if not id then return nil end
+    for i = 1, #lc_cache do
+        if lc_cache[i].id == id then return lc_cache[i] end
+    end
+    return nil
+end
+
+-- Static-geometry line-of-sight check between the camera and a level-changer
+-- position. Prevents the label from appearing through floors/ceilings (e.g.
+-- Agroprom surface vs. Agroprom Underground level changers sitting close in
+-- 3D distance but separated by solid rock). Walks through transparent hits
+-- (foliage) instead of treating any hit as a binary block, mirroring the
+-- engine's own AI vision LOS (Feel_Vision.cpp / material_vis_transparency_factor).
+local function is_lc_los_clear(cam_pos, target_pos, ignore_object)
+    v_ray_origin:set(cam_pos.x, cam_pos.y, cam_pos.z)
+
+    if not lc_ray_pick then
+        lc_ray_pick = ray_pick()
+    end
+
+    for _ = 1, LOS_MAX_BOUNCES do
+        v_ray_dir:set(
+            target_pos.x - v_ray_origin.x,
+            target_pos.y - v_ray_origin.y,
+            target_pos.z - v_ray_origin.z
+        )
+        local remaining = v_ray_dir:magnitude()
+        if remaining <= LOS_TARGET_EPSILON then
+            return true
+        end
+        v_ray_dir:div(remaining)
+
+        lc_ray_pick:set_position(v_ray_origin)
+        lc_ray_pick:set_direction(v_ray_dir)
+        lc_ray_pick:set_range(remaining + LOS_TARGET_EPSILON)
+        lc_ray_pick:set_flags(RQT_STATIC)
+        if ignore_object then
+            lc_ray_pick:set_ignore_object(ignore_object)
+        end
+
+        if not lc_ray_pick:query() then
+            return true
+        end
+
+        local hit_dist = lc_ray_pick:get_distance()
+        if hit_dist >= remaining - LOS_TARGET_EPSILON then
+            return true
+        end
+
+        local result = lc_ray_pick:get_result()
+        if result.material_vis_transparency_factor >= LOS_TRANSPARENT_THRESHOLD then
+            v_ray_origin:set(
+                v_ray_origin.x + v_ray_dir.x * (hit_dist + 0.05),
+                v_ray_origin.y + v_ray_dir.y * (hit_dist + 0.05),
+                v_ray_origin.z + v_ray_dir.z * (hit_dist + 0.05)
+            )
+        else
+            return false
+        end
+    end
+
+    return false
+end
+
+-- Tolerates the ray to the exact target point missing by a small margin
+-- (a doorframe lip, a corner's millimeter) even though the player is
+-- plainly walking toward the transition. Tries the exact point first (same
+-- cost as before for the common case); only on a miss does it try a
+-- handful of offset samples around the target within a small configurable
+-- radius -- left/right perpendicular to the camera-to-target ray in the
+-- XZ plane (this engine is Y-up, so the standard 2D perpendicular
+-- (-dz, 0, dx) needs no cross-product helper) plus straight up/down.
+-- Mirrors xcombat.script:get_enclosure's shape (several ray_pick queries
+-- per check from one origin), just applied to offsetting the target
+-- instead of the origin. This does not help a target that's genuinely
+-- around a corner -- no small offset restores a line of sight a wall
+-- fully blocks; list such level changers in FORCE_SIMPLE so Auto
+-- detection skips the ray for them.
+local function is_target_widened_los_clear(cam_pos, target_pos, ignore_object)
+    if is_lc_los_clear(cam_pos, target_pos, ignore_object) then
+        return true
+    end
+
+    local radius = (settings.los_widen_radius_cm / 100)
+    if radius <= 0 then
+        return false
+    end
+
+    local dx = target_pos.x - cam_pos.x
+    local dz = target_pos.z - cam_pos.z
+    local horiz_len = math.sqrt(dx * dx + dz * dz)
+    if horiz_len < 0.001 then
+        return false
+    end
+    local right_x = -dz / horiz_len * radius
+    local right_z = dx / horiz_len * radius
+
+    -- Left, right, up, down around the target.
+    for i = 1, 4 do
+        local ox, oy, oz = 0, 0, 0
+        if i == 1 then ox, oz = right_x, right_z
+        elseif i == 2 then ox, oz = -right_x, -right_z
+        elseif i == 3 then oy = radius
+        else oy = -radius end
+        v_widen_target:set(target_pos.x + ox, target_pos.y + oy, target_pos.z + oz)
+        if is_lc_los_clear(cam_pos, v_widen_target, ignore_object) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Grace-holds a loss of LOS on a level changer we previously had a clear ray
+-- to, so a momentary blip (a thin edge, foliage, weapon sway clipping a rock
+-- corner) doesn't instantly de-latch the HUD -- is_lc_los_clear above is a
+-- stateless per-frame query with no debounce of its own, while the view-angle
+-- acquisition/release already has hysteresis; LOS previously bypassed it by
+-- gating changer_enabled directly. Grace only applies to a target we already
+-- had a clear ray to (tracked by los_hold_lc_id) -- it does not help initial
+-- acquisition through an obstacle, which stays governed by the angle logic
+-- downstream.
+local function is_lc_los_clear_with_grace(lc_id, cam_pos, target_pos, ignore_object, now)
+    if is_target_widened_los_clear(cam_pos, target_pos, ignore_object) then
+        los_hold_lc_id = lc_id
+        los_lost_since = 0
+        return true
+    end
+
+    if los_hold_lc_id ~= lc_id then
+        return false
+    end
+
+    if los_lost_since == 0 then
+        los_lost_since = now
+    end
+    if now - los_lost_since <= settings.los_grace_ms then
+        return true
+    end
+
+    los_hold_lc_id = nil
+    return false
+end
+
+-- Returns the destination to show and its opacity target. A reveal plays to
+-- completion once started, and so does the disappearance; a new target can
+-- only be picked after the label is fully hidden again.
+local function get_visible_label_and_alpha(now)
+    local actor = db.actor
+    if not actor then return nil, 0, nil end
+
+    if drift_phase == "revealing" and drift_lc_id then
+        local revealing_lc = find_cached_lc(drift_lc_id)
+        if revealing_lc then
+            return revealing_lc.name, 1, revealing_lc.dest_level
+        end
+        begin_drift_disappearance()
+        return nil, 0, nil
+    end
+
+    if drift_phase == "disappearing" then
+        return nil, 0, nil
+    end
+
+    local actor_pos = actor:position()
+    local cam_dir   = device().cam_dir
+    local cam_pos   = device().cam_pos
+    local detection_method = settings.detection_method
+    local radius    = settings.detect_radius
+    local radius_sq = radius * radius
+    local view_angle = settings.view_angle
+    local view_dot = math_cos(math_rad(view_angle))
+    -- Widest angle at which a shown label is kept; anything outside it is
+    -- skipped before the costlier enabled and line-of-sight checks.
+    local release_dot = math_cos(math_rad(view_angle + RELEASE_MARGIN_DEGREES))
+
+    local candidate = nil
+    local candidate_score = -1
+    local latched_lc = nil
+
+    for i = 1, #lc_cache do
+        local lc = lc_cache[i]
+        local dist_sq = actor_pos:distance_to_sqr(lc.pos)
+        if dist_sq <= radius_sq and dist_sq > 0.01 then
+            -- Direction from actor to level changer, normalized
+            v_dir:set(
+                lc.pos.x - actor_pos.x,
+                lc.pos.y - actor_pos.y,
+                lc.pos.z - actor_pos.z
+            )
+            v_dir:div(v_dir:magnitude())
+            local dot = cam_dir.x * v_dir.x + cam_dir.y * v_dir.y + cam_dir.z * v_dir.z
+
+            local changer_enabled = dot >= release_dot
+            if not changer_enabled and lc.id == los_hold_lc_id then
+                -- Looked away: a later look back must re-acquire a clear ray
+                -- rather than inherit a stale grace hold.
+                reset_los_hold()
+            end
+            if changer_enabled and not lc.extra then
+                local obj = level.object_by_id(lc.id)
+                if obj then
+                    changer_enabled = obj:is_level_changer_enabled()
+                end
+            end
+            if changer_enabled then
+                local use_los = detection_method == "los"
+                    or (detection_method == "auto" and lc.auto_los)
+                if use_los and not is_lc_los_clear_with_grace(lc.id, cam_pos, lc.pos, actor, now) then
+                    changer_enabled = false
+                end
+            end
+            if changer_enabled then
+                if lc.id == drift_lc_id then
+                    latched_lc = lc
+                elseif drift_armed and dot >= view_dot and dot > candidate_score then
+                    candidate = lc
+                    candidate_score = dot
+                end
+            end
+        end
+    end
+
+    if latched_lc then
+        return latched_lc.name, 1, latched_lc.dest_level
+    end
+    if candidate then
+        begin_drift_reveal(candidate)
+        return candidate.name, 1, candidate.dest_level
+    end
+    if drift_phase == "visible" then
+        begin_drift_disappearance()
+    else
+        drift_lc_id = nil
+    end
+    return nil, 0, nil
+end
+
+-- ============================================================================
+-- Task tally
+-- ============================================================================
+
+-- Resolves the raw (untranslated) level name of the target shown by the PDA.
+-- Returns nil if the engine task has no resolvable map target.
+local function resolve_task_target_level(game_task)
+    local target_id = game_task and game_task:get_map_object_id()
+    if not target_id or target_id == 65535 then return nil end
+
+    local se_target = alife_object(target_id)
+    if not se_target then return nil end
+
+    local gvid = se_target.m_game_vertex_id
+    if not gvid then return nil end
+
+    local gg = game_graph()
+    if not gg:valid_vertex_id(gvid) then return nil end
+
+    local vert = gg:vertex(gvid)
+    local level_id = vert and vert:level_id()
+    if not level_id then return nil end
+
+    return alife():level_name(level_id)
+end
+
+-- Matches the completion-stage test used by the task-giver dialog code
+-- (axr_task_manager.get_first_finished_task), which falls back to a stage of
+-- 254 for sections with no explicit stage_complete key.
+local function is_task_ready_to_turn_in(task_id, tsk)
+    if not (task_manager.task_ini and task_manager.task_ini:section_exist(task_id)) then
+        return false
+    end
+
+    local stage_complete = task_manager.task_ini:r_float_ex(task_id, "stage_complete") or 254
+    return tsk.stage ~= nil and tsk.stage == stage_complete
+end
+
+-- Counts live PDA tasks whose displayed map target resolves onto dest_level.
+-- Completed repeat tasks remain in task_info during cooldown, so engine task
+-- existence—not tsk.status—is the authority for whether a task is still live.
+local function get_task_tally(dest_level)
+    local active_count = 0
+    local ready_count = 0
+
+    if not dest_level then return active_count, ready_count end
+    if not db.actor then return active_count, ready_count end
+    if not (task_manager and task_manager.get_task_manager) then return active_count, ready_count end
+
+    local tm = task_manager.get_task_manager()
+    for task_id, tsk in pairs(tm.task_info) do
+        local game_task = db.actor:get_task(task_id, true)
+        if game_task then
+            local target_level = resolve_task_target_level(game_task)
+            if target_level == dest_level and is_task_ready_to_turn_in(task_id, tsk) then
+                ready_count = ready_count + 1
+            elseif target_level == dest_level then
+                active_count = active_count + 1
+            end
+        end
+    end
+
+    return active_count, ready_count
+end
+
+local function refresh_counters(dest_level, now)
+    if settings.show_active_tasks or settings.show_ready_tasks then
+        current_todo_count, current_ready_count = get_task_tally(dest_level)
+    else
+        current_todo_count, current_ready_count = 0, 0
+    end
+
+    if settings.show_regular_stashes or settings.show_special_stashes or settings.show_player_stashes then
+        current_regular_stash_count, current_special_stash_count, current_player_stash_count = get_stash_tally(dest_level)
+    else
+        current_regular_stash_count, current_special_stash_count, current_player_stash_count = 0, 0, 0
+    end
+
+    if settings.show_rf_package then
+        current_rf_package_present = get_rf_package_tally(dest_level)
+    else
+        current_rf_package_present = 0
+    end
+
+    next_counter_update = now + COUNTER_UPDATE_MS
+end
+
+local function set_display_destination(label, dest_level, now)
+    display_label = label or ""
+    display_dest_level = dest_level
+    refresh_counters(dest_level, now)
+end
+
+local function clear_destination_state()
+    display_label = ""
+    display_dest_level = nil
+    pending_label = nil
+    pending_dest_level = nil
+    pending_alpha = 0
+    current_todo_count = 0
+    current_ready_count = 0
+    current_regular_stash_count = 0
+    current_special_stash_count = 0
+    current_player_stash_count = 0
+    current_rf_package_present = 0
+    next_counter_update = 0
+end
+
+local function overlay_is_suppressed()
+    local actor = db.actor
+    if not actor then return true end
+    if actor:active_slot() == 8 or actor:has_info("ui_pda") then return true end
+    if item_device and item_device.is_pda_active and item_device.is_pda_active() then return true end
+
+    local actor_wnd = ActorMenu and ActorMenu.get_actor_menu and ActorMenu.get_actor_menu()
+    if actor_wnd and actor_wnd:IsShown() then return true end
+    local pda_wnd = ActorMenu and ActorMenu.get_pda_menu and ActorMenu.get_pda_menu()
+    if pda_wnd and pda_wnd:IsShown() then return true end
+
+    if actor_menu and actor_menu.get_last_mode and actor_menu.get_last_mode() ~= 0 then return true end
+    if actor_menu and actor_menu.inventory_opened and actor_menu.inventory_opened() then return true end
+    if pda and pda.dialog_closed == false then return true end
+    return not main_hud_shown()
+end
+
+local function suppress_overlay()
+    current_alpha = 0
+    target_alpha = 0
+    ensure_settings()
+    current_drift_y = settings.drift_timing.distance
+    clear_destination_state()
+    reset_los_hold()
+    reset_drift_tracking(true)
+    if HUD then HUD:HideOverlay() end
+end
+
+local function update_destination_target(label, alpha, dest_level, now)
+    if not label or alpha <= 0 then
+        pending_label = nil
+        pending_dest_level = nil
+        pending_alpha = 0
+        target_alpha = 0
+        if current_alpha <= SWAP_ALPHA_EPSILON and drift_phase ~= "disappearing" then
+            clear_destination_state()
+        end
+        return
+    end
+
+    if not display_dest_level then
+        set_display_destination(label, dest_level, now)
+        target_alpha = alpha
+        return
+    end
+
+    if dest_level == display_dest_level then
+        pending_label = nil
+        pending_dest_level = nil
+        pending_alpha = 0
+        target_alpha = alpha
+        return
+    end
+
+    pending_label = label
+    pending_dest_level = dest_level
+    pending_alpha = alpha
+    target_alpha = 0
+    if current_alpha <= SWAP_ALPHA_EPSILON then
+        current_alpha = 0
+        set_display_destination(pending_label, pending_dest_level, now)
+        pending_label = nil
+        pending_dest_level = nil
+        target_alpha = pending_alpha
+        pending_alpha = 0
+    end
+end
+
+-- ============================================================================
+-- HUD class
+-- ============================================================================
+
+class "UILevelChangerLabel" (CUIScriptWnd)
+
+function UILevelChangerLabel:__init() super()
+    ensure_settings()
+    local xml = CScriptXmlInit()
+    xml:ParseFile("elseform_lchud.xml")
+    self.txt = xml:InitTextWnd("lchud_label", self)
+
+    self.task_ready_icon = xml:InitStatic("lchud_taskrow:ready_icon", self)
+    self.task_ready_count = xml:InitTextWnd("lchud_taskrow:ready_count", self)
+    self.task_active_icon = xml:InitStatic("lchud_taskrow:active_icon", self)
+    self.task_active_count = xml:InitTextWnd("lchud_taskrow:active_count", self)
+    self.stash_regular_icon = xml:InitStatic("lchud_taskrow:regular_stash_icon", self)
+    self.stash_regular_count = xml:InitTextWnd("lchud_taskrow:regular_stash_count", self)
+    self.stash_special_icon = xml:InitStatic("lchud_taskrow:special_stash_icon", self)
+    self.stash_special_count = xml:InitTextWnd("lchud_taskrow:special_stash_count", self)
+    self.stash_player_icon = xml:InitStatic("lchud_taskrow:player_stash_icon", self)
+    self.stash_player_count = xml:InitTextWnd("lchud_taskrow:player_stash_count", self)
+    self.rf_package_icon = xml:InitStatic("lchud_taskrow:rf_package_icon", self)
+
+    self.counter_cells = {
+        { icon = self.task_ready_icon, count = self.task_ready_count, r = 90, g = 210, b = 145 },
+        { icon = self.task_active_icon, count = self.task_active_count, r = 210, g = 210, b = 210 },
+        { icon = self.stash_regular_icon, count = self.stash_regular_count, r = 255, g = 255, b = 255 },
+        { icon = self.stash_special_icon, count = self.stash_special_count, r = 255, g = 242, b = 0 },
+        { icon = self.stash_player_icon, count = self.stash_player_count, r = 70, g = 140, b = 255 },
+        { icon = self.rf_package_icon, count = nil, r = 80, g = 200, b = 255 },
+    }
+
+    self.last_label = ""
+    self.last_alpha_byte = -1
+
+    self.last_counter_values = { "", "", "", "", "", "" }
+    self.last_taskrow_alpha_byte = -1
+
+    self.last_offset_x = -9999
+    self.last_offset_y = -9999
+    self.last_visual_offset_y = -9999
+    self.pos_vec = vector2()
+
+    self.last_title_font_id = nil
+    self.last_tasks_font_id = nil
+    self.last_glyph_ids = { nil, nil, nil, nil, nil, nil }
+    self.rf_pulsing = false
+
+    -- Per-frame scratch table, reused to avoid garbage while visible.
+    self.values_buf = {}
+    self.applied_settings_version = -1
+
+    self.txt:Show(false)
+    for i = 1, #self.counter_cells do
+        self.counter_cells[i].visible = false
+        self.counter_cells[i].icon:Show(false)
+        if self.counter_cells[i].count then self.counter_cells[i].count:Show(false) end
+    end
+
+    self:ApplyPosition(0)
+    self:ApplyFonts()
+    self:ApplyGlyphs()
+end
+
+function UILevelChangerLabel:LayoutCounterRow()
+    local visible_count = 0
+    local total_width = 0
+    local row_height = 0
+
+    for i = 1, #self.counter_cells do
+        local cell = self.counter_cells[i]
+        if cell.visible then
+            visible_count = visible_count + 1
+            local cell_width = cell.icon:GetWidth()
+            row_height = math.max(row_height, cell.icon:GetHeight())
+            if cell.count then
+                cell_width = cell_width + TASKROW_ITEM_GAP + cell.count:GetWidth()
+                row_height = math.max(row_height, cell.count:GetHeight())
+            end
+            total_width = total_width + cell_width
+        end
+    end
+
+    if visible_count == 0 then return end
+    total_width = total_width + TASKROW_CELL_GAP * (visible_count - 1)
+
+    local anchor_center_x = BASE_POS_X + settings.offset_x + LABEL_WIDTH / 2
+    local x = anchor_center_x - total_width / 2
+    local y = BASE_POS_Y + settings.offset_y + self.last_visual_offset_y + TASKROW_OFFSET_Y
+
+    for i = 1, #self.counter_cells do
+        local cell = self.counter_cells[i]
+        if cell.visible then
+            self.pos_vec:set(x, y + (row_height - cell.icon:GetHeight()) / 2)
+            cell.icon:SetWndPos(self.pos_vec)
+            x = x + cell.icon:GetWidth()
+            if cell.count then
+                x = x + TASKROW_ITEM_GAP
+                self.pos_vec:set(x, y + (row_height - cell.count:GetHeight()) / 2)
+                cell.count:SetWndPos(self.pos_vec)
+                x = x + cell.count:GetWidth()
+            end
+            x = x + TASKROW_CELL_GAP
+        end
+    end
+end
+
+function UILevelChangerLabel:ApplyPosition(visual_offset_y)
+    local off_x = settings.offset_x
+    local off_y = settings.offset_y
+    visual_offset_y = visual_offset_y or 0
+    if off_x ~= self.last_offset_x or off_y ~= self.last_offset_y or visual_offset_y ~= self.last_visual_offset_y then
+        local base_x = BASE_POS_X + off_x
+        local base_y = BASE_POS_Y + off_y + visual_offset_y
+
+        self.pos_vec:set(base_x, base_y)
+        self.txt:SetWndPos(self.pos_vec)
+
+        self.last_offset_x = off_x
+        self.last_offset_y = off_y
+        self.last_visual_offset_y = visual_offset_y
+        self:LayoutCounterRow()
+    end
+end
+
+function UILevelChangerLabel:ApplyFonts()
+    local title_font_id = settings.title_font
+    if title_font_id ~= self.last_title_font_id then
+        self.txt:SetFont(get_font(title_font_id, "graffiti22"))
+        self.last_title_font_id = title_font_id
+    end
+
+    local tasks_font_id = settings.tasks_font
+    if tasks_font_id ~= self.last_tasks_font_id then
+        local font = get_font(tasks_font_id, "graffiti19")
+        for i = 1, #self.counter_cells do
+            local cell = self.counter_cells[i]
+            if cell.count then
+                cell.count:SetFont(font)
+                cell.count:AdjustWidthToText()
+            end
+        end
+        self.last_tasks_font_id = tasks_font_id
+        self:LayoutCounterRow()
+    end
+end
+
+function UILevelChangerLabel:ApplyGlyphs()
+    for i = 1, #self.counter_cells do
+        local glyph_id = settings[CELL_GLYPH_KEYS[i]]
+        if self.last_glyph_ids[i] ~= glyph_id then
+            self.counter_cells[i].icon:InitTexture(GLYPH_TEXTURES[glyph_id])
+            self.last_glyph_ids[i] = glyph_id
+            self.last_taskrow_alpha_byte = -1
+        end
+    end
+end
+
+function UILevelChangerLabel:HideOverlay()
+    self:SetLabel("", 0)
+    self:SetCounterRow(0, 0, 0, 0, 0, 0, 0)
+    self:ApplyPosition(current_drift_y)
+end
+
+function UILevelChangerLabel:SetLabel(text, alpha)
+    local a = math.floor(clamp(alpha * 255, 0, 255))
+    if a == 0 then
+        if self.last_alpha_byte ~= 0 then
+            self.txt:Show(false)
+            self.last_alpha_byte = 0
+        end
+        return
+    end
+
+    if self.last_alpha_byte == 0 then
+        self.txt:Show(true)
+    end
+
+    if self.last_label ~= text then
+        self.txt:SetText(text or "")
+        self.last_label = text
+    end
+
+    if self.last_alpha_byte ~= a then
+        self.txt:SetTextColor(GetARGB(a, CLR_R, CLR_G, CLR_B))
+        self.last_alpha_byte = a
+    end
+end
+
+function UILevelChangerLabel:SetCounterRow(ready_count, active_count, regular_count, special_count, player_count, rf_package_present, alpha)
+    local a = math.floor(clamp(alpha * 255, 0, 255))
+    if a == 0 then
+        if self.last_taskrow_alpha_byte ~= 0 then
+            for i = 1, #self.counter_cells do
+                self.counter_cells[i].icon:Show(false)
+                if self.counter_cells[i].count then self.counter_cells[i].count:Show(false) end
+            end
+            self.last_taskrow_alpha_byte = 0
+        end
+        return
+    end
+
+    local values = self.values_buf
+    values[1], values[2], values[3] = ready_count, active_count, regular_count
+    values[4], values[5], values[6] = special_count, player_count, rf_package_present
+    local show_zero_counts = settings.show_zero_counts
+    local layout_changed = false
+
+    for i = 1, #self.counter_cells do
+        local cell = self.counter_cells[i]
+        local value = values[i] or 0
+        local visible
+
+        if cell.count then
+            local value_text = tostring(value)
+            if self.last_counter_values[i] ~= value_text then
+                cell.count:SetText(value_text)
+                cell.count:AdjustWidthToText()
+                self.last_counter_values[i] = value_text
+                layout_changed = true
+            end
+            visible = settings[CELL_TOGGLE_KEYS[i]] and (show_zero_counts or value ~= 0)
+        else
+            -- Presence-only cell (e.g. RF package): no zero to show, so it's
+            -- only ever visible while actually present.
+            visible = settings[CELL_TOGGLE_KEYS[i]] and value ~= 0
+        end
+
+        if cell.visible ~= visible then
+            cell.visible = visible
+            layout_changed = true
+        end
+        cell.icon:Show(visible)
+        if cell.count then cell.count:Show(visible) end
+    end
+
+    if layout_changed then self:LayoutCounterRow() end
+
+    if self.last_taskrow_alpha_byte ~= a then
+        for i = 1, #self.counter_cells do
+            local cell = self.counter_cells[i]
+            if cell.count then cell.count:SetTextColor(GetARGB(a, 255, 255, 255)) end
+            cell.icon:SetTextureColor(GetARGB(a, cell.r, cell.g, cell.b))
+        end
+        self.last_taskrow_alpha_byte = a
+    end
+
+    local rf_cell = self.counter_cells[6]
+    if rf_cell.visible and settings.rf_package_pulsate then
+        local pulse_a = math.floor(clamp(a * get_rf_pulse_factor(time_global()), 0, 255))
+        rf_cell.icon:SetTextureColor(GetARGB(pulse_a, rf_cell.r, rf_cell.g, rf_cell.b))
+        self.rf_pulsing = true
+    elseif self.rf_pulsing then
+        -- Pulse switched off mid-display: restore the steady row opacity.
+        rf_cell.icon:SetTextureColor(GetARGB(a, rf_cell.r, rf_cell.g, rf_cell.b))
+        self.rf_pulsing = false
+    end
+end
+
+function UILevelChangerLabel:Update()
+    CUIScriptWnd.Update(self)
+    ensure_settings()
+
+    -- Fast-path: the disappearance may continue moving after opacity reaches
+    -- zero. This branch runs on the overwhelming majority of frames (no level
+    -- changer nearby); a pending font or glyph change is applied the next time
+    -- something becomes visible.
+    if current_alpha == 0 and target_alpha == 0 and drift_phase ~= "disappearing" then
+        if self.last_alpha_byte ~= 0 then
+            self:SetLabel("", 0)
+        end
+        if self.last_taskrow_alpha_byte ~= 0 then
+            self:SetCounterRow(0, 0, 0, 0, 0, 0, 0)
+        end
+        self:ApplyPosition(current_drift_y)
+        return
+    end
+
+    if self.applied_settings_version ~= settings_version then
+        self:ApplyFonts()
+        self:ApplyGlyphs()
+        self.applied_settings_version = settings_version
+    end
+
+    -- Frame-rate-independent alpha movement, eased with smoothstep in both
+    -- directions; fades, distance, and travel come from the selected preset.
+    local drift_timing = settings.drift_timing
+    local dt_ms = device().time_delta
+    local nonnegative_dt_ms = math.max(0, dt_ms)
+    local drift_fade_progress = nil
+    local drift_travel_progress = nil
+    if drift_phase == "revealing" then
+        drift_reveal_elapsed_ms = drift_reveal_elapsed_ms + nonnegative_dt_ms
+        drift_fade_progress = clamp(drift_reveal_elapsed_ms / drift_timing.fade_in_ms, 0, 1)
+        drift_travel_progress = clamp(drift_reveal_elapsed_ms / drift_timing.travel_ms, 0, 1)
+        current_alpha = target_alpha * smoothstep(drift_fade_progress)
+    elseif drift_phase == "disappearing" then
+        drift_disappear_elapsed_ms = drift_disappear_elapsed_ms + nonnegative_dt_ms
+        drift_fade_progress = clamp(drift_disappear_elapsed_ms / drift_timing.fade_out_ms, 0, 1)
+        drift_travel_progress = clamp(drift_disappear_elapsed_ms / drift_timing.travel_ms, 0, 1)
+        current_alpha = drift_disappear_start_alpha * (1 - smoothstep(drift_fade_progress))
+    elseif dt_ms > 0 then
+        -- Only reached for a destination swap while visible, which fades
+        -- linearly with the preset's timings.
+        local duration_ms = target_alpha > current_alpha and drift_timing.fade_in_ms or drift_timing.fade_out_ms
+        local alpha_step = dt_ms / duration_ms
+        if target_alpha > current_alpha then
+            current_alpha = math.min(current_alpha + alpha_step, target_alpha)
+        else
+            current_alpha = math.max(current_alpha - alpha_step, target_alpha)
+        end
+        if math.abs(current_alpha - target_alpha) <= SWAP_ALPHA_EPSILON then current_alpha = target_alpha end
+    end
+
+    local drift_distance = drift_timing.distance
+    if drift_phase == "revealing" then
+        current_drift_y = drift_distance * (1 - smoothstep(drift_travel_progress))
+        if drift_fade_progress >= 1 and drift_travel_progress >= 1 then
+            current_alpha = target_alpha
+            current_drift_y = 0
+            drift_phase = "visible"
+        end
+    elseif drift_phase == "visible" then
+        current_drift_y = 0
+    elseif drift_phase == "disappearing" then
+        local eased_travel = smoothstep(drift_travel_progress)
+        current_drift_y = drift_disappear_start_y
+            + (drift_distance - drift_disappear_start_y) * eased_travel
+        if drift_fade_progress >= 1 and drift_travel_progress >= 1 then
+            current_alpha = 0
+            current_drift_y = drift_distance
+            clear_destination_state()
+            reset_drift_tracking(true)
+        end
+    else
+        current_drift_y = drift_distance
+    end
+    self:ApplyPosition(current_drift_y)
+
+    self:SetLabel(display_label, current_alpha)
+
+    self:SetCounterRow(
+        current_ready_count,
+        current_todo_count,
+        current_regular_stash_count,
+        current_special_stash_count,
+        current_player_stash_count,
+        current_rf_package_present,
+        current_alpha
+    )
+end
+
+-- ============================================================================
+-- HUD lifecycle
+-- ============================================================================
+
+local function activate_hud()
+    if HUD == nil then
+        HUD = UILevelChangerLabel()
+        get_hud():AddDialogToRender(HUD)
+    end
+end
+
+local function deactivate_hud()
+    if HUD ~= nil then
+        get_hud():RemoveDialogToRender(HUD)
+        HUD = nil
+    end
+end
+
+-- ============================================================================
+-- Callbacks
+-- ============================================================================
+
+local function actor_on_first_update()
+    build_lc_cache()
+    activate_hud()
+end
+
+local function actor_on_net_destroy()
+    deactivate_hud()
+    suppress_overlay()
+end
+
+local function on_screen_resolution_changed()
+    deactivate_hud()
+    activate_hud()
+end
+
+local function actor_on_update()
+    ensure_settings()
+    if #lc_cache == 0 or not settings.enabled or overlay_is_suppressed() then
+        suppress_overlay()
+        return
+    end
+
+    local now = time_global()
+    local label, alpha, dest_level = get_visible_label_and_alpha(now)
+    update_destination_target(label, alpha, dest_level, now)
+
+    if display_dest_level and now >= next_counter_update then
+        refresh_counters(display_dest_level, now)
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_net_destroy",  actor_on_net_destroy)
+    RegisterScriptCallback("actor_on_update",       actor_on_update)
+    RegisterScriptCallback("on_screen_resolution_changed", on_screen_resolution_changed)
+    RegisterScriptCallback("on_option_change", mark_settings_dirty)
+    RegisterScriptCallback("mcm_option_change", mark_settings_dirty)
+end

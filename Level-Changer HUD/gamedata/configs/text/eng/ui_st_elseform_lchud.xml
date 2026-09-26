@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_elseform_lchud">
+		<text>%c[255,105,173,255]L-CHUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_icons">
+		<text>Icons</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_counters">
+		<text>Counters</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_fonts">
+		<text>Appearance</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_enabled">
+		<text>Enable L-CHUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_enabled_desc">
+		<text>Turn the destination name and its counters on or off.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detect_radius">
+		<text>Detection Distance</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detect_radius_desc">
+		<text>How close you must be to a level transition before its destination can appear, in meters.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method">
+		<text>Detection Method</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_desc">
+		<text>How the HUD decides that a level transition is in view. Auto uses Line of Sight on levels where another area sits above or below the transitions (Agroprom, Dark Valley, Yantar, Radar, both Chernobyl NPP levels, Generators, Jupiter, Zaton) and Simple everywhere else. Simple uses range and gaze alone and can show through walls. Line of Sight also requires that nothing solid (a wall, floor, ceiling) blocks the transition, which stops it from showing through geometry when another level area sits nearby in 3D space (e.g. an underground level directly below the surface).</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_auto">
+		<text>Auto</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_simple">
+		<text>Simple</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_los">
+		<text>Line of Sight</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_grace_ms">
+		<text>Line of Sight Grace Period</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_grace_ms_desc">
+		<text>How long a brief line-of-sight interruption (a branch, a rock edge, a corner) is ignored before the HUD hides, in milliseconds. Set to 0 to hide instantly on any interruption. Only used with Line of Sight detection.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_widen_radius_cm">
+		<text>Line of Sight Target Radius</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_widen_radius_cm_desc">
+		<text>Tolerate the line-of-sight check missing the transition's exact point by up to this distance, in centimeters, without moving the transition itself. Keep this modest: too large and the HUD can find a clear line through a nearby unrelated gap instead of the real one. Only used with Line of Sight detection.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_animation_view_angle">
+		<text>Detection Angle</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_animation_view_angle_desc">
+		<text>How closely you must look toward the transition. Higher values allow a wider viewing angle.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset">
+		<text>Animation Preset</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_desc">
+		<text>How the destination label appears and disappears: fade timing, how far it rises, and how long the movement takes. Fade keeps the label still.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_instant">
+		<text>Instant</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_fast">
+		<text>Fast</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_balanced">
+		<text>Balanced</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_gentle">
+		<text>Gentle</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_fade">
+		<text>Fade</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_x">
+		<text>Offset Horizontal Position</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_x_desc">
+		<text>Move the destination label and counters left or right. 0 is the built-in default position.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_y">
+		<text>Offset Vertical Position</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_y_desc">
+		<text>Move the destination label and counters up or down. 0 is the built-in default position.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_ready_tasks">
+		<text>Ready Tasks</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_ready_tasks_desc">
+		<text>Show how many tasks are ready to turn in at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_active_tasks">
+		<text>Active Tasks</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_active_tasks_desc">
+		<text>Show how many active tasks lead to the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_regular_stashes">
+		<text>Regular Stashes</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_regular_stashes_desc">
+		<text>Show known regular stashes that remain uncollected at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_special_stashes">
+		<text>Yellow Stashes</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_special_stashes_desc">
+		<text>Show known yellow stashes that remain uncollected at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_player_stashes">
+		<text>Player Stashes</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_player_stashes_desc">
+		<text>Show known player-created stashes that remain uncollected at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_rf_package">
+		<text>RF Package</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_rf_package_desc">
+		<text>Show an icon when an active RF Receiver hidden package is waiting at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_pulsate">
+		<text>RF Package Pulse</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_pulsate_desc">
+		<text>Breathe the RF package icon's opacity up and down while it is shown.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_zero_counts">
+		<text>Show Zeroes</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_zero_counts_desc">
+		<text>Keep enabled counters visible even when their count is zero.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_task_glyph">
+		<text>Task Icon</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_task_glyph_desc">
+		<text>Choose the icon shown beside ready and active tasks.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_stash_glyph">
+		<text>Stash Icon</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_stash_glyph_desc">
+		<text>Choose the icon shown beside regular, yellow, and player stashes.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_glyph">
+		<text>RF Package Icon</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_glyph_desc">
+		<text>Choose the icon shown when an RF Receiver hidden package is waiting at the destination.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_target">
+		<text>Target</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_stash">
+		<text>Stash</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_active_dot">
+		<text>Active Dot</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_ring">
+		<text>Ring</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_weight">
+		<text>Weight</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_ruble">
+		<text>Ruble</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_recycle">
+		<text>Recycle</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_explosive">
+		<text>Explosive</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_title_font">
+		<text>Destination Font</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_title_font_desc">
+		<text>Choose the font used for the destination name.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_tasks_font">
+		<text>Counter Font</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_tasks_font_desc">
+		<text>Choose the font used for task and stash counters.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica16">
+		<text>Letterica 16</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica18">
+		<text>Letterica 18</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica25">
+		<text>Letterica 25</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti19">
+		<text>Graffiti 19</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti22">
+		<text>Graffiti 22</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti32">
+		<text>Graffiti 32</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_slide">
+		<text>Level Changer HUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_text_2">
+		<text>Show the destination name and its counters when you look toward a nearby level transition.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_text_3">
+		<text>Advanced settings</text>
+	</string>
+</string_table>

@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_elseform_lchud">
+		<text>%c[255,255,255,255]L-CHUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_icons">
+		<text>Значки</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_counters">
+		<text>Счётчики</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_group_fonts">
+		<text>Шрифты</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_enabled">
+		<text>Включить L-CHUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_enabled_desc">
+		<text>Показывать название локации и счётчики, когда вы смотрите на ближайший переход.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detect_radius">
+		<text>Дальность отображения</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detect_radius_desc">
+		<text>На каком расстоянии от перехода может появиться название локации, в метрах.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method">
+		<text>Способ обнаружения</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_desc">
+		<text>Как HUD определяет, что переход находится в поле зрения. «Авто» использует прямую видимость на уровнях, где над переходами или под ними находится другая область (Агропром, Тёмная долина, Янтарь, Радар, обе ЧАЭС, Генераторы, Юпитер, Затон), и «Простой» на всех остальных. «Простой» учитывает только расстояние и взгляд и может показывать название сквозь стены. «Прямая видимость» также требует, чтобы переход не был закрыт сплошной геометрией (стена, пол, потолок), — это не даёт названию появляться сквозь препятствия, если рядом в 3D-пространстве находится другая часть уровня (например, подземный уровень прямо под поверхностью).</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_auto">
+		<text>Авто</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_simple">
+		<text>Простой</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_detection_method_los">
+		<text>Прямая видимость</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_grace_ms">
+		<text>Время прощения потери видимости</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_grace_ms_desc">
+		<text>Как долго кратковременное прерывание прямой видимости (ветка, край камня, угол) игнорируется, прежде чем HUD скроется, в миллисекундах. Установите 0, чтобы скрывать мгновенно при любом прерывании. Используется только при обнаружении по прямой видимости.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_widen_radius_cm">
+		<text>Радиус цели прямой видимости</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_los_widen_radius_cm_desc">
+		<text>Допускает, чтобы проверка прямой видимости промахивалась мимо точной точки перехода на расстояние до этого значения, в сантиметрах, не перемещая сам переход. Держите значение небольшим: слишком большое позволит HUD находить чистую линию через соседний посторонний проём вместо настоящего. Используется только при обнаружении по прямой видимости.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_animation_view_angle">
+		<text>Ширина обзора</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_animation_view_angle_desc">
+		<text>Насколько точно нужно смотреть на переход. Чем выше значение, тем шире допустимый угол взгляда.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset">
+		<text>Пресет анимации</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_desc">
+		<text>Как название появляется и исчезает: скорость затухания, высота подъёма и длительность движения. «Затухание» оставляет название на месте.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_instant">
+		<text>Мгновенный</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_fast">
+		<text>Быстрый</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_balanced">
+		<text>Сбалансированный</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_gentle">
+		<text>Мягкий</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_drift_preset_fade">
+		<text>Затухание</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_x">
+		<text>Смещение по горизонтали</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_x_desc">
+		<text>Перемещает название локации и счётчики влево или вправо. 0 — стандартное положение по умолчанию.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_y">
+		<text>Смещение по вертикали</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_offset_y_desc">
+		<text>Перемещает название локации и счётчики вверх или вниз. 0 — стандартное положение по умолчанию.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_ready_tasks">
+		<text>Готовые задания</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_ready_tasks_desc">
+		<text>Показывает количество заданий, готовых к сдаче на целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_active_tasks">
+		<text>Активные задания</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_active_tasks_desc">
+		<text>Показывает количество активных заданий, ведущих на целевую локацию.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_regular_stashes">
+		<text>Обычные тайники</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_regular_stashes_desc">
+		<text>Показывает известные несобранные обычные тайники на целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_special_stashes">
+		<text>Жёлтые тайники</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_special_stashes_desc">
+		<text>Показывает известные несобранные жёлтые тайники на целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_player_stashes">
+		<text>Синие тайники</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_player_stashes_desc">
+		<text>Показывает известные несобранные тайники, созданные игроком, на целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_rf_package">
+		<text>Посылка RF-передатчика</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_rf_package_desc">
+		<text>Показывает значок, если на целевой локации ожидает активная посылка RF-передатчика.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_pulsate">
+		<text>Пульсация пакета RF</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_pulsate_desc">
+		<text>Плавно менять прозрачность значка пакета RF, пока он показан.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_zero_counts">
+		<text>Показывать нули</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_show_zero_counts_desc">
+		<text>Оставляет включённые счётчики видимыми, даже когда их значение равно нулю.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_task_glyph">
+		<text>Значок заданий</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_task_glyph_desc">
+		<text>Выберите значок для счётчиков готовых и активных заданий.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_stash_glyph">
+		<text>Значок тайников</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_stash_glyph_desc">
+		<text>Выберите значок для счётчиков обычных, жёлтых и личных тайников.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_glyph">
+		<text>Значок RF-посылки</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_rf_package_glyph_desc">
+		<text>Выберите значок для активной посылки RF-передатчика на целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_target">
+		<text>Цель</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_stash">
+		<text>Тайник</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_active_dot">
+		<text>Активная точка</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_ring">
+		<text>Кольцо</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_weight">
+		<text>Вес</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_ruble">
+		<text>Рубль</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_recycle">
+		<text>Переработка</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_glyph_explosive">
+		<text>Взрывчатка</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_title_font">
+		<text>Шрифт локации</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_title_font_desc">
+		<text>Выберите шрифт для названия целевой локации.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_tasks_font">
+		<text>Шрифт счётчиков</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_tasks_font_desc">
+		<text>Выберите шрифт для счётчиков заданий и тайников.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica16">
+		<text>Letterica 16</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica18">
+		<text>Letterica 18</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_letterica25">
+		<text>Letterica 25</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti19">
+		<text>Graffiti 19</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti22">
+		<text>Graffiti 22</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_font_graffiti32">
+		<text>Graffiti 32</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_slide">
+		<text>Level Changer HUD</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_text_2">
+		<text>Показывает информацию о локации в сторону перехода на которую смотрит игрок.</text>
+	</string>
+	<string id="ui_mcm_elseform_lchud_text_3">
+		<text>Дополнительные настройки</text>
+	</string>
+</string_table>

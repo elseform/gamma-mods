@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Level-Changer HUD</moduleName>
+  <moduleImage path="fomod\lchud-mcm.png" />
+  <requiredInstallFiles>
+    <file source="gamedata\scripts\elseform_lchud.script" destination="gamedata\scripts\elseform_lchud.script" />
+    <file source="gamedata\scripts\elseform_lchud_mcm.script" destination="gamedata\scripts\elseform_lchud_mcm.script" />
+    <file source="gamedata\configs\ui\elseform_lchud.xml" destination="gamedata\configs\ui\elseform_lchud.xml" />
+    <file source="gamedata\configs\ui\elseform_lchud_16.xml" destination="gamedata\configs\ui\elseform_lchud_16.xml" />
+    <file source="gamedata\configs\ui\elseform_lchud_21.xml" destination="gamedata\configs\ui\elseform_lchud_21.xml" />
+    <file source="gamedata\configs\text\eng\ui_st_elseform_lchud.xml" destination="gamedata\configs\text\eng\ui_st_elseform_lchud.xml" />
+    <file source="gamedata\configs\text\rus\ui_st_elseform_lchud.xml" destination="gamedata\configs\text\rus\ui_st_elseform_lchud.xml" />
+    <file source="gamedata\textures\catsy\ui_dotmarks.dds" destination="gamedata\textures\catsy\ui_dotmarks.dds" />
+    <file source="gamedata\configs\ui\textures_descr\dotmarks_texd.xml" destination="gamedata\configs\ui\textures_descr\dotmarks_texd.xml" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Install Level-Changer HUD">
+      <optionalFileGroups order="Explicit">
+        <group name="Package" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="Level-Changer HUD">
+              <description>Installs the destination level-name HUD label with configurable task and stash counters.</description>
+              <image path="fomod\lchud-mcm.png" />
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

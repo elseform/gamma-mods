@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<w>
+	<lchud_label x="212" y="45" width="600" height="30">
+		<text font="graffiti22" r="220" g="215" b="200" a="0" align="c" vert_align="c" />
+	</lchud_label>
+
+	<lchud_taskrow x="212" y="45" width="600" height="48">
+		<ready_icon x="166" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_task_sec</texture>
+		</ready_icon>
+		<ready_count x="196" y="22" width="24" height="26">
+			<text font="graffiti19" r="255" g="255" b="255" a="0" align="l" vert_align="c" />
+		</ready_count>
+		<active_icon x="232" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_task_sec</texture>
+		</active_icon>
+		<active_count x="262" y="22" width="24" height="26">
+			<text font="graffiti19" r="255" g="255" b="255" a="0" align="l" vert_align="c" />
+		</active_count>
+		<regular_stash_icon x="298" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_stash</texture>
+		</regular_stash_icon>
+		<regular_stash_count x="328" y="22" width="24" height="26">
+			<text font="graffiti19" r="255" g="255" b="255" a="0" align="l" vert_align="c" />
+		</regular_stash_count>
+		<special_stash_icon x="364" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_stash</texture>
+		</special_stash_icon>
+		<special_stash_count x="394" y="22" width="24" height="26">
+			<text font="graffiti19" r="255" g="255" b="255" a="0" align="l" vert_align="c" />
+		</special_stash_count>
+		<player_stash_icon x="430" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_stash</texture>
+		</player_stash_icon>
+		<player_stash_count x="460" y="22" width="24" height="26">
+			<text font="graffiti19" r="255" g="255" b="255" a="0" align="l" vert_align="c" />
+		</player_stash_count>
+		<rf_package_icon x="496" y="22" width="10" height="18" stretch="1">
+			<texture>ui_catsy_marker_dotactive</texture>
+		</rf_package_icon>
+	</lchud_taskrow>
+</w>
