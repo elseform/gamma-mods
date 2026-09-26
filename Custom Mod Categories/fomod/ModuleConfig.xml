@@ -4,7 +4,6 @@
   <moduleName>Custom Mod Categories</moduleName>
   <moduleImage path="fomod\CMC.png" />
   <requiredInstallFiles>
-    <file source="meta.ini" destination="meta.ini" />
     <file source="README.md" destination="README.md" />
     <folder source="gamedata" destination="gamedata" />
   </requiredInstallFiles>

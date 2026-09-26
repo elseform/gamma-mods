@@ -4,7 +4,6 @@
   <moduleName>It's Time To Stop</moduleName>
   <moduleImage path="fomod\ITTS11_MCM.png" />
   <requiredInstallFiles>
-    <file source="meta.ini" destination="meta.ini" />
     <file source="README.md" destination="README.md" />
     <file source="gamedata\configs\text\eng\ui_st_elseform_itts.xml" destination="gamedata\configs\text\eng\ui_st_elseform_itts.xml" />
     <file source="gamedata\configs\text\rus\ui_st_elseform_itts.xml" destination="gamedata\configs\text\rus\ui_st_elseform_itts.xml" />

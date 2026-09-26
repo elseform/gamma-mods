@@ -4,7 +4,6 @@
   <moduleName>Fits Into These Slots</moduleName>
   <moduleImage path="fomod\FITS12.png" />
   <requiredInstallFiles>
-    <file source="meta.ini" destination="meta.ini" />
     <file source="README.md" destination="README.md" />
   </requiredInstallFiles>
   <installSteps order="Explicit">
